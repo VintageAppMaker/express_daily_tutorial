@@ -1,0 +1,11 @@
+{
+    "name": "node-features",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "gen": "node generate.js",
+        "async": "node main.js async",
+        "sync": "node main.js sync",
+        "bench": "npm run async && npm run sync"
+    }
+}
