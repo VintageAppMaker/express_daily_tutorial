@@ -54,8 +54,8 @@ src/1/
 ### (b) 각 소스별 주석설명
 
 - `app.js`
-  - `http.createServer(...)`: 요청(req)과 응답(res)을 받아 200 응답과 문자열 본문을 전송합니다.
-  - `server.listen(3000, ...)`: 3000 포트로 수신 대기 후 콘솔 로그 출력. express.js(서버)
+  - `http.createServer(...)`: 요청(req)과 응답(res)을 받아 200 응답과 문자열 본문을 전송한다.
+  - `server.listen(3000, ...)`: 3000 포트로 수신 대기 후 콘솔 로그 출력.
 - `package.json` (예시)
 
 ```json
