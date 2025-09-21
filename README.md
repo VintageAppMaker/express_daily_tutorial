@@ -17,7 +17,7 @@ Node.js는 크롬 V8 엔진 위에서 동작하는 서버 사이드 JavaScript �
 ## 2) 코드 중심의 활용예제
 
 
-아래는 Node.js 표준 `http` 모듈로 만든 최소 웹서버 예제입니다(Express 없이 동작).
+아래는 Node.js 표준 `http` 모듈로 만든 최소 웹서버 예제이다(Express 없이 동작).
 
 ```js
 // app.js
@@ -39,7 +39,7 @@ server.listen(3000, () => {
     npm -v    # npm 버전 확인
     node app.js
     ```
--   접속: [http://localhost:3000/](http://localhost:3000/) (브라우저에서 “Hello, Node.js!” 확인) express.js(서버)
+-   접속: [http://localhost:3000/](http://localhost:3000/) (브라우저에서 “Hello, Node.js!” 확인) 
 
 ## 3) 데스크탑에서 빌드할 수 있는 예제
 
@@ -225,12 +225,12 @@ if (mode === 'sync') syncRead();
 else asyncRead();
 ```
 
--  **비동기 버전**은 `Promise.all`로 **동시에** 읽어서 장치 대기 시간이 겹칩니다.
--  **동기 버전**은 파일당 대기 시간이 **누적**됩니다.
+-  **비동기 버전**은 `Promise.all`로 **동시에** 읽어서 장치 대기 시간이 병목된다.
+-  **동기 버전**은 파일당 대기 시간이 **누적**된다.
 
 ### (c) 빌드방법
 
-> 별도 빌드 없음(런타임 실행). Node.js만 설치되어 있으면 됩니다.
+> 별도 빌드 없음(런타임 실행). Node.js만 설치되어 있으면 OK
 
 ```bash
 # 1) 프로젝트 생성 & 의존성(없음)
