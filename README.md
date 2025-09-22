@@ -1,7 +1,41 @@
 
 # Express를 빠르게 배우는 1일 학습
 
-> Node.js의 backend의 기본인 Express를 체화하기 위한 1일 학습과정
+> Node.js의 backend의 기본인 Express를 체화하기 위한 1일 학습과정. 하루 1개씩 학습 및 정리(빌드)하며 체화하는 과정.
+
+# 먼저 할 일
+
+### 1. node.js 설치하기(개발환경 설치)
+
+- Node.js 설치: [공식 사이트](https://nodejs.org/ko/)
+- 패키지 관리자(NPM): Node.js 설치 시 기본 포함되며, 외부 라이브러리 설치/실행 스크립트 관리에 사용하는 매우 중요한 툴.
+- 에디터/IDE: [Visual Studio Code](https://code.visualstudio.com/) 강추
+- 실행 확인: node -v, npm -v 명령으로 정상 설치 여부를 확인.
+- 추가 툴: nodemon(자동 재시작), eslint(코드 검사) 등을 설치해 개발 효율을 높일 수 있다.
+
+### 2. 간단한 예제 실행하기
+
+아래 소스를 작성
+-  check.js
+
+```javascript
+console.log("Node.js version:", process.version);
+console.log("Platform:", process.platform);
+console.log("Arch:", process.arch);
+console.log("Current directory:", process.cwd());
+console.log("Memory usage:", process.memoryUsage());
+
+```
+
+콘솔에서 실행 
+
+```bash
+node check.js
+
+```
+
+![](images/0_1.jpg)
+
 
 # Day 1 — 1.1 Node.js란?
 
