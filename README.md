@@ -175,7 +175,7 @@ mode === 'sync' ? syncRead() : asyncRead();
 - `Promise.all`로 **동시에 읽기** → 이벤트 루프가 대기 시간 동안 다른 작업을 처리.
 - `readFileSync`는 **대기하며 블로킹** → 다음 파일로 못 넘어감.
 
-3) 데스크탑에서 빌드할 수 있는 예제
+## 3) 데스크탑에서 빌드할 수 있는 예제
 
 ### (a) 프로젝트 전체구조
 
@@ -293,4 +293,128 @@ npm run bench
     Promise.all([...])을 사용해 여러 파일을 읽을 때 성능이 향상되는 이유를 
     한 문장으로 설명하시오.
 ```
+
+# Day 3 — 2.1 Express.js 소개
+
+## 1) 기본설명
+
+Express.js는 Node.js 환경에서 가장 널리 사용되는 웹 애플리케이션 프레임워크.
+
+-   **경량 & 유연성**: 최소한의 핵심만 제공하고, 필요한 기능은 미들웨어를 통해 확장.
+-   **라우팅 시스템**: URL과 HTTP 메서드에 따라 요청을 처리할 수 있다.
+-   **미들웨어 기반 아키텍처**: 요청 → 미들웨어 체인 → 응답 구조로 동작하여, 로깅, 인증, 에러 처리 등을 손쉽게 삽입할 수 있다.
+-   **대규모 생태계**: 수많은 Express 호환 라이브러리와 튜토리얼, 커뮤니티가 존재한다.
+
+
+## 2) 코드 중심의 활용예제
+
+Express로 간단한 “Hello, Express” 서버 만들기:
+
+```js
+// server.js
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+// 루트 경로 GET 요청 처리
+app.get('/', (req, res) => {
+  res.send('Hello, Express!');
+});
+
+// /about 경로 추가
+app.get('/about', (req, res) => {
+  res.send('This is the About page.');
+});
+
+// 서버 실행
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+실행 후:
+
+*   [http://localhost:3000/](http://localhost:3000/) → “Hello, Express!”
+*   [http://localhost:3000/about](http://localhost:3000/about) → “This is the About page.”
+
+* * *
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 전체구조
+
+```
+src/3/
+├─ package.json
+└─ server.js
+```
+
+### (b) 각 소스별 주석설명
+
+**package.json**
+
+```json
+{
+  "name": "express-intro",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+```
+
+*   `"dependencies"`에 Express 프레임워크 추가.
+
+**server.js**
+
+```js
+// Express 불러오기
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+// 라우팅 예제
+app.get('/', (req, res) => {
+  res.send('Hello, Express!');
+});
+
+app.get('/about', (req, res) => {
+  res.send('This is the About page.');
+});
+
+// 서버 실행
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+### (c) 빌드방법
+
+```bash
+# 1. 프로젝트 생성
+
+# 2. Express 설치
+npm install express
+
+# 3. 서버 실행
+npm start
+
+# 4. 브라우저에서 접속
+http://localhost:3000
+```
+
+
+### 4) 문제(3항)
+
+```
+1.  빈칸 채우기: Express.js는 ______ 기반 아키텍처를 통해 요청과 응답을 처리한다.
+2.  O/X: Express.js는 Node.js에 내장된 표준 라이브러리이다.
+3.  단답: Express 앱에서 HTTP GET 요청에 응답하려면 어떤 메서드를 사용해야 하는가?
+```
+
+
 

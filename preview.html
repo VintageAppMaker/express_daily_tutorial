@@ -162,9 +162,7 @@ mode === &#39;sync&#39; ? syncRead() : asyncRead();
 <li><code>Promise.all</code>로 <strong>동시에 읽기</strong> → 이벤트 루프가 대기 시간 동안 다른 작업을 처리.</li>
 <li><code>readFileSync</code>는 <strong>대기하며 블로킹</strong> → 다음 파일로 못 넘어감.</li>
 </ul>
-<ol start="3">
-<li>데스크탑에서 빌드할 수 있는 예제</li>
-</ol>
+<h2>3) 데스크탑에서 빌드할 수 있는 예제</h2>
 <h3>(a) 프로젝트 전체구조</h3>
 <pre><code>src/2/
 ├─ package.json
@@ -266,6 +264,103 @@ npm run bench
 3.  단답:  
     Promise.all([...])을 사용해 여러 파일을 읽을 때 성능이 향상되는 이유를 
     한 문장으로 설명하시오.
+</code></pre>
+<h1>Day 3 — 2.1 Express.js 소개</h1>
+<h2>1) 기본설명</h2>
+<p>Express.js는 Node.js 환경에서 가장 널리 사용되는 웹 애플리케이션 프레임워크.</p>
+<ul>
+<li><strong>경량 &amp; 유연성</strong>: 최소한의 핵심만 제공하고, 필요한 기능은 미들웨어를 통해 확장.</li>
+<li><strong>라우팅 시스템</strong>: URL과 HTTP 메서드에 따라 요청을 처리할 수 있다.</li>
+<li><strong>미들웨어 기반 아키텍처</strong>: 요청 → 미들웨어 체인 → 응답 구조로 동작하여, 로깅, 인증, 에러 처리 등을 손쉽게 삽입할 수 있다.</li>
+<li><strong>대규모 생태계</strong>: 수많은 Express 호환 라이브러리와 튜토리얼, 커뮤니티가 존재한다.</li>
+</ul>
+<h2>2) 코드 중심의 활용예제</h2>
+<p>Express로 간단한 “Hello, Express” 서버 만들기:</p>
+<pre><code class="language-js">// server.js
+const express = require(&#39;express&#39;);
+const app = express();
+const PORT = 3000;
+
+// 루트 경로 GET 요청 처리
+app.get(&#39;/&#39;, (req, res) =&gt; {
+  res.send(&#39;Hello, Express!&#39;);
+});
+
+// /about 경로 추가
+app.get(&#39;/about&#39;, (req, res) =&gt; {
+  res.send(&#39;This is the About page.&#39;);
+});
+
+// 서버 실행
+app.listen(PORT, () =&gt; {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+</code></pre>
+<p>실행 후:</p>
+<ul>
+<li><a href="http://localhost:3000/">http://localhost:3000/</a> → “Hello, Express!”</li>
+<li><a href="http://localhost:3000/about">http://localhost:3000/about</a> → “This is the About page.”</li>
+</ul>
+<hr>
+<h2>3) 데스크탑에서 빌드할 수 있는 예제</h2>
+<h3>(a) 프로젝트 전체구조</h3>
+<pre><code>src/3/
+├─ package.json
+└─ server.js
+</code></pre>
+<h3>(b) 각 소스별 주석설명</h3>
+<p><strong>package.json</strong></p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;express-intro&quot;,
+  &quot;version&quot;: &quot;1.0.0&quot;,
+  &quot;main&quot;: &quot;server.js&quot;,
+  &quot;scripts&quot;: {
+    &quot;start&quot;: &quot;node server.js&quot;
+  },
+  &quot;dependencies&quot;: {
+    &quot;express&quot;: &quot;^4.18.2&quot;
+  }
+}
+</code></pre>
+<ul>
+<li><code>&quot;dependencies&quot;</code>에 Express 프레임워크 추가.</li>
+</ul>
+<p><strong>server.js</strong></p>
+<pre><code class="language-js">// Express 불러오기
+const express = require(&#39;express&#39;);
+const app = express();
+const PORT = 3000;
+
+// 라우팅 예제
+app.get(&#39;/&#39;, (req, res) =&gt; {
+  res.send(&#39;Hello, Express!&#39;);
+});
+
+app.get(&#39;/about&#39;, (req, res) =&gt; {
+  res.send(&#39;This is the About page.&#39;);
+});
+
+// 서버 실행
+app.listen(PORT, () =&gt; {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+</code></pre>
+<h3>(c) 빌드방법</h3>
+<pre><code class="language-bash"># 1. 프로젝트 생성
+
+# 2. Express 설치
+npm install express
+
+# 3. 서버 실행
+npm start
+
+# 4. 브라우저에서 접속
+http://localhost:3000
+</code></pre>
+<h3>4) 문제(3항)</h3>
+<pre><code>1.  빈칸 채우기: Express.js는 ______ 기반 아키텍처를 통해 요청과 응답을 처리한다.
+2.  O/X: Express.js는 Node.js에 내장된 표준 라이브러리이다.
+3.  단답: Express 앱에서 HTTP GET 요청에 응답하려면 어떤 메서드를 사용해야 하는가?
 </code></pre>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
