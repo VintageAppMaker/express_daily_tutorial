@@ -416,5 +416,141 @@ http://localhost:3000
 3.  단답: Express 앱에서 HTTP GET 요청에 응답하려면 어떤 메서드를 사용해야 하는가?
 ```
 
+# Day 4 — 2.2 Express.js 라우팅 기본
 
+## 1) 기본설명
+
+Express.js의 가장 핵심 기능 중 하나는 **라우팅(Routing)** 이다.  
+라우팅은 클라이언트의 **HTTP 메서드(GET, POST, PUT, DELETE 등)** 와 **URL 경로**에 따라 실행할 동작(핸들러 함수)을 정의하는 과정이다.
+
+-   **라우트 구성 요소**
+    -   HTTP 메서드 (예: `app.get`, `app.post`)
+    -   경로 (예: `'/'`, `'/users'`)
+    -   핸들러 함수 `(req, res) => {...}`
+-   **특징**
+    -   직관적이며 코드 가독성이 높음
+    -   정규식 기반 경로 지정 가능
+    -   파라미터와 쿼리스트링을 쉽게 처리 가능
+
+
+## 2) 코드 중심의 활용예제
+
+기본 라우팅 예제:
+
+```js
+// routes.js
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+// GET /
+app.get('/', (req, res) => {
+  res.send('홈 페이지');
+});
+
+// GET /user/:id
+app.get('/user/:id', (req, res) => {
+  const userId = req.params.id;  // URL 파라미터
+  res.send(`사용자 ID: ${userId}`);
+});
+
+// POST /login
+app.post('/login', (req, res) => {
+  res.send('로그인 요청 처리');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 전체구조
+
+```
+src/4/
+├─ package.json
+├─ routes.js
+└─ testclient.txt 
+```
+
+### (b) 각 소스별 주석설명
+
+**package.json**
+
+```json
+{
+  "name": "express-routing",
+  "version": "1.0.0",
+  "main": "routes.js",
+  "scripts": {
+    "start": "node routes.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+```
+
+*   `express`를 의존성에 추가.
+*   `npm start` 실행 시 `routes.js` 실행.
+
+**routes.js**
+
+```js
+// Express 불러오기
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+// 루트 경로
+app.get('/', (req, res) => {
+  res.send('홈 페이지');
+});
+
+// URL 파라미터 예제 (/user/123 → "사용자 ID: 123")
+app.get('/user/:id', (req, res) => {
+  res.send(`사용자 ID: ${req.params.id}`);
+});
+
+// POST 요청 처리 (/login)
+app.post('/login', (req, res) => {
+  res.send('로그인 요청 처리');
+});
+
+// 서버 시작
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+### (c) 빌드방법
+
+```bash
+# 1. 프로젝트 생성
+
+# 2. Express 설치
+npm install express
+
+# 3. 서버 실행
+npm start
+
+# 4. 테스트(testclient.txt)
+curl http://localhost:3000/
+curl http://localhost:3000/user/101
+curl -X POST http://localhost:3000/login
+```
+
+
+4) 문제(3항)
+
+```
+1.  빈칸 채우기: Express 라우팅은 HTTP ______와 URL ______를 조합하여 요청을 처리한다.
+2.  O/X: `app.get('/user/:id', ...)`에서 `:id`는 URL 파라미터를 의미한다.
+3.  단답: POST 요청을 처리하기 위해 사용하는 Express 메서드는 무엇인가?
+```
+
+
+---
 
