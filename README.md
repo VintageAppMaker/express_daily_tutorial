@@ -552,5 +552,146 @@ curl -X POST http://localhost:3000/login
 ```
 
 
----
+# Day 5 — 2.3 Express.js 미들웨어 기본
+
+## 1) 기본설명
+
+Express.js의 \*\*미들웨어(Middleware)\*\*는 요청(Request)과 응답(Response) 사이에서 실행되는 함수.
+
+-   **동작 원리**: `req`와 `res` 객체를 조작하거나, 로깅·인증·에러처리 같은 공통 기능을 수행한 뒤 `next()`를 호출하여 다음 미들웨어/라우터로 제어를 넘긴다.
+-   **형식**: `(req, res, next) => { ... }`
+-   **종류**
+    *   애플리케이션 레벨 미들웨어: `app.use(...)`로 등록
+    *   라우터 레벨 미들웨어: 특정 라우터에만 적용
+    *   에러 처리 미들웨어: `(err, req, res, next)` 형태
+-   **활용 예시**: 요청 로깅, Body 파싱, 인증/인가, 정적 파일 제공
+
+
+
+## 2) 코드 중심의 활용예제
+
+간단한 로깅 미들웨어와 라우팅 적용:
+
+```js
+// middleware-example.js
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+// 애플리케이션 레벨 미들웨어
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next(); // 다음 핸들러로 이동
+});
+
+// 라우트
+app.get('/', (req, res) => {
+  res.send('홈 페이지');
+});
+
+app.get('/about', (req, res) => {
+  res.send('소개 페이지');
+});
+
+// 에러 처리 미들웨어
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('서버 에러 발생');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 전체구조
+
+```
+src/5/
+├─ package.json
+└─ middleware.js
+```
+
+### (b) 각 소스별 주석설명
+
+**package.json**
+
+```json
+{
+  "name": "express-middleware",
+  "version": "1.0.0",
+  "main": "middleware.js",
+  "scripts": {
+    "start": "node middleware.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+```
+
+**middleware.js**
+
+```js
+// Express 불러오기
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+// 로깅 미들웨어 (모든 요청에 적용)
+app.use((req, res, next) => {
+  console.log(`[LOG] ${req.method} ${req.url}`);
+  next();
+});
+
+// 라우팅
+app.get('/', (req, res) => {
+  res.send('홈 페이지');
+});
+
+app.get('/about', (req, res) => {
+  res.send('소개 페이지');
+});
+
+// 에러 처리 미들웨어
+app.use((err, req, res, next) => {
+  console.error('Error stack:', err.stack);
+  res.status(500).send('에러가 발생했습니다.');
+});
+
+// 서버 시작
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+### (c) 빌드방법
+
+```bash
+# 1. 프로젝트 생성
+
+# 2. Express 설치
+npm install express
+
+# 3. 서버 실행
+npm start
+
+# 4. 브라우저/터미널에서 확인(testclinet.txt)
+curl http://localhost:3000/
+curl http://localhost:3000/about
+```
+
+실행 시 콘솔에 `[LOG] GET /` 같은 로그가 출력됨.
+
+* * *
+
+4) 문제(3항)
+---------
+
+1.  빈칸 채우기: Express 미들웨어는 `(req, res, ______)` 형식의 함수를 기본으로 한다.
+2.  O/X: 미들웨어에서 `next()`를 호출하지 않으면 요청 처리가 다음 단계로 넘어가지 않는다.
+3.  단답: 에러 처리 미들웨어 함수의 매개변수는 몇 개인가?
 
