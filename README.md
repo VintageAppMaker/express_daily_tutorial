@@ -695,3 +695,159 @@ curl http://localhost:3000/about
 2.  O/X: 미들웨어에서 `next()`를 호출하지 않으면 요청 처리가 다음 단계로 넘어가지 않는다.
 3.  단답: 에러 처리 미들웨어 함수의 매개변수는 몇 개인가?
 
+
+
+# Day 6 — 2.4 Express.js 정적 파일 제공
+
+## 1) 기본설명
+
+Express.js는 \*\*정적 파일(static files)\*\*을 쉽게 서비스할 수 있는 기능을 제공한다. 
+
+-   **정적 파일**: HTML, CSS, JS, 이미지, 폰트 등 서버에서 가공 없이 그대로 클라이언트로 전달되는 리소스.
+-   **`express.static` 미들웨어**: 특정 디렉토리를 정적 파일 제공 경로로 지정할 수 있음.
+-   **활용 예시**:
+    -   웹사이트의 CSS·이미지 배포
+    -   프론트엔드 SPA(React, Vue) 빌드 파일 제공
+    -   단순 정적 리소스 공유
+
+
+## 2) 코드 중심의 활용예제
+
+```js
+// static-example.js
+const express = require('express');
+const path = require('path');
+const app = express();
+const PORT = 3000;
+
+// "public" 디렉토리를 정적 파일 제공 경로로 지정
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 라우트 (테스트용)
+app.get('/', (req, res) => {
+  res.send('정적 파일 예제 서버');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+-   `http://localhost:3000/style.css` 요청 시 `public/style.css` 파일 자동 제공
+-   `http://localhost:3000/images/logo.png` 요청 시 `public/images/logo.png` 제공
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 전체구조
+
+```
+src/6/
+├─ package.json
+├─ static.js
+└─ public/
+   ├─ index.html
+   ├─ style.css
+   └─ images/
+      └─ logo.png
+```
+
+### (b) 각 소스별 주석설명
+
+**package.json**
+
+```json
+{
+  "name": "express-static",
+  "version": "1.0.0",
+  "main": "static.js",
+  "scripts": {
+    "start": "node static.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+```
+
+**static.js**
+
+```js
+// Express 및 path 모듈 불러오기
+const express = require('express');
+const path = require('path');
+const app = express();
+const PORT = 3000;
+
+// public 디렉토리 내 파일을 정적 리소스로 제공
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 기본 라우트
+app.get('/', (req, res) => {
+  res.send('정적 파일 서버 실행 중');
+});
+
+// 서버 시작
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+**public/index.html**
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>정적 파일 예제</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <h1>Express 정적 파일 제공</h1>
+  <img src="/images/logo.png" alt="로고">
+</body>
+</html>
+```
+
+**public/style.css**
+
+```css
+body {
+  font-family: sans-serif;
+  background-color: #f4f4f4;
+  text-align: center;
+}
+h1 {
+  color: #2c3e50;
+}
+```
+
+### (c) 빌드방법
+
+```bash
+# 1. 프로젝트 생성
+
+# 2. Express 설치
+npm install express
+
+# 3. public 디렉토리 및 예제 파일 생성
+# (index.html, css, logo.png)
+
+# 4. 서버 실행
+npm start
+
+# 5. 브라우저에서 확인
+http://localhost:3000/index.html
+```
+
+
+### 4) 문제(3항)
+
+```
+1.  빈칸 채우기: Express에서 정적 파일을 제공할 때 사용하는 내장 미들웨어는 `express.______` 이다.
+2.  O/X: `express.static`을 사용하면 지정한 디렉토리 내 파일들이 URL을 통해 바로 접근 가능하다.
+3.  단답: `public` 폴더 안에 있는 `style.css`를 브라우저에서 불러오려면 어떤 URL로 접근해야 하는가?
+```
+
+

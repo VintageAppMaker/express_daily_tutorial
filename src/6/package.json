@@ -1,0 +1,11 @@
+{
+    "name": "express-static",
+    "version": "1.0.0",
+    "main": "static.js",
+    "scripts": {
+        "start": "node static.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2"
+    }
+}
