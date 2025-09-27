@@ -1,0 +1,3 @@
+curl http://localhost:3000/user/101?sort=desc
+curl -X POST http://localhost:3000/login -H "Content-Type: application/json" -d '{"username":"admin","password":"1234"}'
+curl -v http://localhost:3000/old-route

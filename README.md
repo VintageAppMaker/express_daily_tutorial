@@ -850,4 +850,165 @@ http://localhost:3000/index.html
 3.  단답: `public` 폴더 안에 있는 `style.css`를 브라우저에서 불러오려면 어떤 URL로 접근해야 하는가?
 ```
 
+# Day 7 — 2.5 Express.js 요청과 응답 객체
+
+## 1) 기본설명
+
+Express.js에서 모든 라우트 핸들러는 두 가지 핵심 객체를 인자로 받는다.
+
+*   **요청 객체 (`req`)**: 클라이언트가 보낸 HTTP 요청의 정보(헤더, 파라미터, 쿼리스트링, 바디 등)를 포함.
+*   **응답 객체 (`res`)**: 서버에서 클라이언트로 보낼 응답을 제어. 텍스트/JSON 응답, 상태 코드 지정, 리다이렉트 등 다양한 메서드 제공.
+
+**주요 `req` 속성**
+
+*   `req.params`: URL 파라미터
+*   `req.query`: 쿼리스트링 파라미터
+*   `req.body`: POST/PUT 요청 본문(BodyParser나 express.json() 필요)
+*   `req.headers`: 요청 헤더
+
+**주요 `res` 메서드**
+
+*   `res.send()`: 문자열, 버퍼, 객체 등을 응답
+*   `res.json()`: JSON 응답
+*   `res.status()`: HTTP 상태 코드 설정
+*   `res.redirect()`: 다른 URL로 리다이렉트
+
+
+## 2) 코드 중심의 활용예제
+
+```js
+// req-res-example.js
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+// JSON body 파싱 미들웨어
+app.use(express.json());
+
+// GET /user/:id 요청 → params, query 확인
+app.get('/user/:id', (req, res) => {
+  const id = req.params.id;
+  const sort = req.query.sort;
+  res.send(`User ID: ${id}, sort: ${sort || 'none'}`);
+});
+
+// POST /login 요청 → body 확인
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === 'admin' && password === '1234') {
+    res.json({ success: true, message: '로그인 성공' });
+  } else {
+    res.status(401).json({ success: false, message: '로그인 실패' });
+  }
+});
+
+// 리다이렉트 예제
+app.get('/old-route', (req, res) => {
+  res.redirect('/new-route');
+});
+app.get('/new-route', (req, res) => {
+  res.send('이곳은 새로운 경로입니다.');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 전체구조
+
+```
+src/7
+├─ package.json
+├─ req-res.js
+└─ README.md
+```
+
+### (b) 각 소스별 주석설명
+
+**package.json**
+
+```json
+{
+  "name": "express-req-res",
+  "version": "1.0.0",
+  "main": "req-res.js",
+  "scripts": {
+    "start": "node req-res.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+```
+
+**req-res-example.js**
+
+```js
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+// JSON 형식 body 파싱을 위한 미들웨어
+app.use(express.json());
+
+// URL 파라미터와 쿼리 사용
+app.get('/user/:id', (req, res) => {
+  res.send(`User ID: ${req.params.id}, sort: ${req.query.sort || 'none'}`);
+});
+
+// POST body 확인
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === 'admin' && password === '1234') {
+    res.json({ success: true, message: '로그인 성공' });
+  } else {
+    res.status(401).json({ success: false, message: '로그인 실패' });
+  }
+});
+
+// 리다이렉트
+app.get('/old-route', (req, res) => {
+  res.redirect('/new-route');
+});
+app.get('/new-route', (req, res) => {
+  res.send('이곳은 새로운 경로입니다.');
+});
+
+// 서버 실행
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+### (c) 빌드방법
+
+```bash
+# 1. 프로젝트 생성
+
+# 2. Express 설치
+npm install express
+
+# 3. 서버 실행
+npm start
+
+# 4. 테스트
+curl http://localhost:3000/user/101?sort=desc
+curl -X POST http://localhost:3000/login -H "Content-Type: application/json" -d '{"username":"admin","password":"1234"}'
+curl -v http://localhost:3000/old-route
+```
+
+
+## 4) 문제(3항)
+
+```
+1.  빈칸 채우기: `req.params`, `req.query`, `req.body`는 각각 ______, ______, ______ 데이터를 담는다.
+2.  O/X: `res.status(404).send('Not Found')`는 상태 코드와 메시지를 동시에 전송할 수 있다.
+3.  단답: 클라이언트를 다른 URL로 이동시키는 데 사용하는 `res` 메서드는 무엇인가?
+```
+
+
 
