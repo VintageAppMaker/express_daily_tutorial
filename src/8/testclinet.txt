@@ -1,0 +1,5 @@
+curl http://localhost:3000/
+curl http://localhost:3000/users
+curl http://localhost:3000/users/10
+curl http://localhost:3000/products
+curl -X POST http://localhost:3000/products

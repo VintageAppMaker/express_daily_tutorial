@@ -1010,5 +1010,202 @@ curl -v http://localhost:3000/old-route
 3.  단답: 클라이언트를 다른 URL로 이동시키는 데 사용하는 `res` 메서드는 무엇인가?
 ```
 
+# Day 8 — 2.6 Express.js 라우터 모듈화
+
+## 1) 기본설명
+
+애플리케이션이 커질수록 모든 라우트를 한 파일(`app.js`)에 작성하는 것은 관리가 어렵다.  
+Express.js는 **Router 객체**를 제공하여 라우팅 로직을 모듈화할 수 있다.
+
+-   **`express.Router()`**
+    -   미니 Express 애플리케이션과 같은 객체
+    -   라우팅 관련 메서드(`get`, `post`, `put`, `delete`)를 지원
+    -   독립적으로 미들웨어를 설정 가능
+-   **장점**
+    -   코드 가독성 향상
+    -   역할별 라우트 분리(예: `/users`, `/products`)
+    -   유지보수성 증가
 
 
+## 2) 코드 중심의 활용예제
+
+```js
+// app.js
+const express = require('express');
+const userRouter = require('./routes/user');
+const productRouter = require('./routes/product');
+
+const app = express();
+const PORT = 3000;
+
+// 미들웨어
+app.use(express.json());
+
+// 라우터 등록
+app.use('/users', userRouter);
+app.use('/products', productRouter);
+
+app.get('/', (req, res) => {
+  res.send('메인 페이지');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+
+// routes/user.js
+const express = require('express');
+const router = express.Router();
+
+router.get('/', (req, res) => {
+  res.send('사용자 목록');
+});
+
+router.get('/:id', (req, res) => {
+  res.send(`사용자 ID: ${req.params.id}`);
+});
+
+module.exports = router;
+
+// routes/product.js
+const express = require('express');
+const router = express.Router();
+
+router.get('/', (req, res) => {
+  res.send('상품 목록');
+});
+
+router.post('/', (req, res) => {
+  res.send('상품 등록 완료');
+});
+
+module.exports = router;
+```
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 전체구조
+
+```
+src/8/
+├─ package.json
+├─ app.js
+└─  routes/
+   ├─ user.js
+   └─ product.js
+```
+
+### (b) 각 소스별 주석설명
+
+**package.json**
+
+```json
+{
+  "name": "express-router",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+```
+
+**app.js**
+
+```js
+// Express 앱 생성
+const express = require('express');
+const userRouter = require('./routes/user');
+const productRouter = require('./routes/product');
+
+const app = express();
+const PORT = 3000;
+
+// JSON 파싱 미들웨어
+app.use(express.json());
+
+// 라우터 연결
+app.use('/users', userRouter);
+app.use('/products', productRouter);
+
+// 기본 라우트
+app.get('/', (req, res) => {
+  res.send('메인 페이지');
+});
+
+// 서버 실행
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+**routes/user.js**
+
+```js
+const express = require('express');
+const router = express.Router();
+
+// 사용자 목록
+router.get('/', (req, res) => {
+  res.send('사용자 목록');
+});
+
+// 특정 사용자 조회
+router.get('/:id', (req, res) => {
+  res.send(`사용자 ID: ${req.params.id}`);
+});
+
+module.exports = router;
+```
+
+**routes/product.js**
+
+```js
+const express = require('express');
+const router = express.Router();
+
+// 상품 목록
+router.get('/', (req, res) => {
+  res.send('상품 목록');
+});
+
+// 상품 등록
+router.post('/', (req, res) => {
+  res.send('상품 등록 완료');
+});
+
+module.exports = router;
+```
+
+### (c) 빌드방법
+
+```bash
+# 1. 프로젝트 생성
+
+# 2. Express 설치
+npm install express
+
+# 3. routes 디렉토리 생성 후 user.js, product.js 작성
+
+# 4. 서버 실행
+npm start
+
+# 5. 테스트
+curl http://localhost:3000/
+curl http://localhost:3000/users
+curl http://localhost:3000/users/10
+curl http://localhost:3000/products
+curl -X POST http://localhost:3000/products
+```
+
+## 4) 문제(3항)
+
+```
+1.  빈칸 채우기: Express의 라우터 객체는 `express.______()`로 생성한다.
+2.  O/X: 라우터 모듈은 `module.exports = router`를 통해 내보내야 한다.
+3.  단답: `/users/:id` 경로를 처리하는 라우트를 만들기 위해 사용하는 Express 객체는 무엇인가?
+```
