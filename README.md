@@ -877,7 +877,7 @@ Express.js에서 모든 라우트 핸들러는 두 가지 핵심 객체를 인�
 ## 2) 코드 중심의 활용예제
 
 ```js
-// req-res-example.js
+// req-res.js
 const express = require('express');
 const app = express();
 const PORT = 3000;
@@ -945,7 +945,7 @@ src/7
 }
 ```
 
-**req-res-example.js**
+**req-res.js**
 
 ```js
 const express = require('express');
@@ -1208,4 +1208,139 @@ curl -X POST http://localhost:3000/products
 1.  빈칸 채우기: Express의 라우터 객체는 `express.______()`로 생성한다.
 2.  O/X: 라우터 모듈은 `module.exports = router`를 통해 내보내야 한다.
 3.  단답: `/users/:id` 경로를 처리하는 라우트를 만들기 위해 사용하는 Express 객체는 무엇인가?
+```
+
+# Day 9 — 2.7 Express.js 에러 처리
+
+## 1) 기본설명
+
+Express.js는 요청 처리 중 발생하는 오류를 효과적으로 다루기 위해 **에러 처리 미들웨어**를 제공한다.
+
+-   **형식**: `(err, req, res, next)` → 네 개의 매개변수 필수
+-   **동작 원리**: 라우터나 일반 미들웨어에서 `next(err)`를 호출하면 에러 처리 미들웨어로 흐름이 이동
+-   **활용 예시**
+    -   사용자 입력 오류 처리
+    -   인증/인가 실패 응답
+    -   서버 내부 오류 로그 기록
+    -   공통 에러 응답 포맷 제공
+
+
+## 2) 코드 중심의 활용예제
+
+```js
+// error.js
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+// JSON 파서 미들웨어
+app.use(express.json());
+
+// 고의 에러 발생 라우트
+app.get('/error', (req, res, next) => {
+  const err = new Error('의도적으로 발생시킨 에러');
+  next(err); // 에러 처리 미들웨어로 전달
+});
+
+// 정상 라우트
+app.get('/', (req, res) => {
+  res.send('홈 페이지');
+});
+
+// 에러 처리 미들웨어
+app.use((err, req, res, next) => {
+  console.error('[에러 발생]', err.message);
+  res.status(500).json({ success: false, message: err.message });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 전체구조
+
+```
+src/9/
+├─ package.json
+└─ error.js
+```
+
+### (b) 각 소스별 주석설명
+
+**package.json**
+
+```json
+{
+  "name": "express-error",
+  "version": "1.0.0",
+  "main": "error.js",
+  "scripts": {
+    "start": "node error.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+```
+
+**error.js**
+
+```js
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+// 요청 body JSON 파싱
+app.use(express.json());
+
+// 고의적으로 에러 발생시켜 테스트
+app.get('/error', (req, res, next) => {
+  next(new Error('테스트용 에러'));
+});
+
+// 정상 라우트
+app.get('/', (req, res) => {
+  res.send('홈 페이지');
+});
+
+// 에러 처리 미들웨어 (반드시 4개 인자 필요)
+app.use((err, req, res, next) => {
+  console.error('에러 로그:', err.message);
+  res.status(500).json({
+    success: false,
+    error: err.message
+  });
+});
+
+// 서버 실행
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+### (c) 빌드방법
+
+```bash
+# 1. 프로젝트 생성
+
+# 2. Express 설치
+npm install express
+
+# 3. 서버 실행
+npm start
+
+# 4. 테스트
+curl http://localhost:3000/
+curl http://localhost:3000/error
+```
+
+## 4) 문제(3항)
+
+```
+1.  빈칸 채우기: Express 에러 처리 미들웨어는 반드시 매개변수 ____개를 가져야 한다.
+2.  O/X: 일반 미들웨어에서 `next(err)`를 호출하면 에러 처리 미들웨어로 제어가 넘어간다.
+3.  단답: 클라이언트에게 HTTP 상태 코드 500과 JSON 응답을 동시에 보내려면 어떤 `res` 메서드 체인을 사용하는가?
 ```
