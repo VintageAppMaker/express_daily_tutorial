@@ -1,0 +1,3 @@
+curl http://localhost:3000/
+curl http://localhost:3000/secure        # → 인증 실패
+curl -H "Authorization: secrettoken" http://localhost:3000/secure  # → 인증 성공

@@ -1344,3 +1344,161 @@ curl http://localhost:3000/error
 2.  O/X: 일반 미들웨어에서 `next(err)`를 호출하면 에러 처리 미들웨어로 제어가 넘어간다.
 3.  단답: 클라이언트에게 HTTP 상태 코드 500과 JSON 응답을 동시에 보내려면 어떤 `res` 메서드 체인을 사용하는가?
 ```
+# Day 10 — 2.8 Express.js 미들웨어 고급
+
+## 1) 기본설명
+
+미들웨어(Middleware)는 Express.js에서 요청(request)과 응답(response) 사이에서 실행되는 함수다.
+기본 미들웨어 개념은 이미 다뤘지만, 심화에서는 다음과 같은 주제를 이해하는 것이 중요.
+
+-   **미들웨어 실행 순서**: `app.use()` 또는 `app.METHOD()`에 등록된 순서대로 실행됨
+-   **다중 미들웨어 체이닝**: 하나의 라우트에 여러 개의 미들웨어를 등록 가능
+-   **조건부 미들웨어**: 특정 조건(로그인 여부, 특정 URL)에 따라 미들웨어 실행
+-   **써드파티 미들웨어**: morgan(로그), cors(CORS 처리), helmet(보안 헤더) 등
+-   **글로벌 vs 라우터 전용**:
+    -   글로벌: `app.use()`로 등록 → 모든 요청에 적용
+    -   라우터 전용: 특정 라우터에서만 적용
+
+
+## 2) 코드 중심의 활용예제
+
+```js
+// middleware-advanced.js
+const express = require('express');
+const morgan = require('morgan');
+const app = express();
+const PORT = 3000;
+
+// 1. 글로벌 미들웨어 (요청 로깅)
+app.use(morgan('dev'));
+
+// 2. 커스텀 미들웨어 - 요청 시간 기록
+app.use((req, res, next) => {
+  req.requestTime = new Date();
+  console.log(`[${req.method}] ${req.url} - ${req.requestTime}`);
+  next();
+});
+
+// 3. 조건부 미들웨어 - 인증 체크
+function authMiddleware(req, res, next) {
+  const token = req.headers['authorization'];
+  if (token === 'secrettoken') {
+    next(); // 인증 성공 → 다음 미들웨어/라우트로 이동
+  } else {
+    res.status(401).json({ success: false, message: '인증 실패' });
+  }
+}
+
+// 기본 라우트
+app.get('/', (req, res) => {
+  res.send(`홈페이지 - 요청 시간: ${req.requestTime}`);
+});
+
+// 인증이 필요한 라우트
+app.get('/secure', authMiddleware, (req, res) => {
+  res.send('보호된 페이지 접근 성공');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 전체구조
+
+```
+src/10/
+├─ package.json
+└─ middleware-advanced.js
+```
+
+### (b) 각 소스별 주석설명
+
+**package.json**
+
+```json
+{
+  "name": "express-middleware-advanced",
+  "version": "1.0.0",
+  "main": "middleware-advanced.js",
+  "scripts": {
+    "start": "node middleware-advanced.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "morgan": "^1.10.0"
+  }
+}
+```
+
+**middleware-advanced.js**
+
+```js
+const express = require('express');
+const morgan = require('morgan');
+const app = express();
+const PORT = 3000;
+
+// 글로벌 미들웨어: 모든 요청에 로그 출력
+app.use(morgan('dev'));
+
+// 요청 시간 기록 미들웨어
+app.use((req, res, next) => {
+  req.requestTime = new Date();
+  console.log(`요청 시간: ${req.requestTime}`);
+  next();
+});
+
+// 인증 미들웨어 정의
+function authMiddleware(req, res, next) {
+  const token = req.headers['authorization'];
+  if (token === 'secrettoken') {
+    next();
+  } else {
+    res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+}
+
+// 루트 페이지
+app.get('/', (req, res) => {
+  res.send(`홈페이지 - 요청 시간: ${req.requestTime}`);
+});
+
+// 인증 필요 라우트
+app.get('/secure', authMiddleware, (req, res) => {
+  res.send('보호된 페이지입니다.');
+});
+
+// 서버 시작
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}/`);
+});
+```
+
+### (c) 빌드방법
+
+```bash
+# 1. 프로젝트 생성
+
+# 2. 의존성 설치
+npm install express morgan
+
+# 3. 서버 실행
+npm start
+
+# 4. 테스트
+curl http://localhost:3000/
+curl http://localhost:3000/secure        # → 인증 실패
+curl -H "Authorization: secrettoken" http://localhost:3000/secure  # → 인증 성공
+```
+
+
+## 4) 문제(3항)
+
+```
+1.  빈칸 채우기: Express에서 미들웨어가 실행되는 순서는 등록된 ______ 순서대로이다.
+2.  O/X: 특정 라우트에만 미들웨어를 적용할 수 있다.
+3.  단답: 인증 로직을 공통적으로 처리할 때 사용하는 Express 기능은 무엇인가?
+```
