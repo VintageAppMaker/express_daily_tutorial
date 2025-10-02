@@ -1502,3 +1502,338 @@ curl -H "Authorization: secrettoken" http://localhost:3000/secure  # → 인증 
 2.  O/X: 특정 라우트에만 미들웨어를 적용할 수 있다.
 3.  단답: 인증 로직을 공통적으로 처리할 때 사용하는 Express 기능은 무엇인가?
 ```
+
+# Day 12 — 템플릿 엔진 문법 (EJS · Pug · Handlebars)
+
+## 1) 기본설명
+
+Express.js는 서버 측에서 HTML을 동적으로 생성하기 위해 **템플릿 엔진**을 사용한다. 주로 **EJS**, **Pug**, **Handlebars**를 사용한다.
+
+-   **EJS**: HTML 친화적. JS 문법을 그대로 사용하며 `<% %>` 계열 태그로 제어/출력을 수행.
+-   **Pug**: 들여쓰기 기반의 간결한 문법. 태그 생략, 속성은 괄호 표기, `#{}`(escape), `!{}`(unescape) 보간.
+-   **Handlebars**: Mustache 계열. `{{ }}` 보간, `{{#if}}`, `{{#each}}` 블록 도우미, 부분 템플릿(Partials)과 레이아웃 패턴이 강점.
+
+
+## 2) 코드 중심의 활용예제 (문법 비교)
+
+### 2-1. 공통 데이터(예시)
+
+```js
+// 서버에서 템플릿으로 전달할 데이터 예시
+const data = {
+  title: '템플릿 엔진 비교',
+  user: { name: 'Ada', role: 'admin' },
+  todos: ['공부하기', '운동하기', '코드 작성하기'],
+  htmlSnippet: '<strong>중요</strong>'
+};
+```
+
+### 2-2. EJS 문법 요약
+
+*   출력(escape): `<%= value %>`
+*   원문 출력(unescape): `<%- html %>`
+*   제어(로직): `<% if(...) { %> ... <% } %>`
+*   partial(include): `<%- include('partials/item', {x:1}) %>`
+
+```ejs
+<!-- views/ejs/index.ejs -->
+<!DOCTYPE html>
+<html>
+<head><title><%= title %></title></head>
+<body>
+  <h1>EJS: <%= title %></h1>
+
+  <!-- 변수 출력 -->
+  <p>사용자: <%= user.name %> (role: <%= user.role %>)</p>
+
+  <!-- 조건문 -->
+  <% if (user.role === 'admin') { %>
+    <p>관리자 전용 메뉴 표시</p>
+  <% } else { %>
+    <p>일반 사용자</p>
+  <% } %>
+
+  <!-- 반복문 -->
+  <h3>오늘의 할 일</h3>
+  <ul>
+    <% todos.forEach(function(t){ %>
+      <li><%= t %></li>
+    <% }) %>
+  </ul>
+
+  <!-- escape vs unescape -->
+  <p>escape: <%= htmlSnippet %></p>
+  <p>unescape: <%- htmlSnippet %></p>
+
+  <!-- partial include -->
+  <%- include('partials/footer', { year: 2025 }) %>
+</body>
+</html>
+```
+
+```ejs
+<!-- views/ejs/partials/footer.ejs -->
+<hr/>
+<small>© <%= year %> EJS Footer</small>
+```
+
+### 2-3. Pug 문법 요약
+
+-   들여쓰기로 계층 구조 표현, 태그명만 써도 요소 생성
+-   속성: `tag(attr="val", another=expr)`
+-   보간: `#{expr}`(escape), `!{expr}`(unescape)
+-   반복: `each item in list`
+-   조건: `if/else if/else`
+-   mixin/extend 등 고급 문법 존재(여기선 핵심만)
+
+```pug
+//- views/pug/index.pug
+doctype html
+html
+  head
+    title= title
+  body
+    h1 Pug: #{title}
+
+    p 사용자: #{user.name} (role: #{user.role})
+
+    if user.role === 'admin'
+      p 관리자 전용 메뉴 표시
+    else
+      p 일반 사용자
+
+    h3 오늘의 할 일
+    ul
+      each t in todos
+        li= t
+
+    //- escape vs unescape
+    p escape: #{htmlSnippet}
+    p unescape: !{htmlSnippet}
+
+    include ./partials/footer
+```
+
+```pug
+//- views/pug/partials/footer.pug
+hr
+small © 2025 Pug Footer
+```
+
+### 2-4. Handlebars 문법 요약
+
+*   출력(escape): `{{value}}`
+*   원문 출력(unescape): `{{{html}}}`
+*   조건: `{{#if cond}} ... {{else}} ... {{/if}}`
+*   반복: `{{#each list}} ... {{/each}}`
+*   부분 템플릿(Partial): `{{> partialName context}}`
+*   레이아웃(보통 `express-handlebars`)에서 `{{{body}}}`로 콘텐츠 삽입
+
+```hbs
+{{!-- views/hbs/index.hbs --}}
+<!DOCTYPE html>
+<html>
+  <head><title>{{title}}</title></head>
+  <body>
+    <h1>Handlebars: {{title}}</h1>
+
+    <p>사용자: {{user.name}} (role: {{user.role}})</p>
+
+    {{#if (eq user.role "admin")}}
+      <p>관리자 전용 메뉴 표시</p>
+    {{else}}
+      <p>일반 사용자</p>
+    {{/if}}
+
+    <h3>오늘의 할 일</h3>
+    <ul>
+      {{#each todos}}
+        <li>{{this}}</li>
+      {{/each}}
+    </ul>
+
+    <p>escape: {{htmlSnippet}}</p>
+    <p>unescape: {{{htmlSnippet}}}</p>
+
+    {{> footer year=2025}}
+  </body>
+</html>
+```
+
+```hbs
+{{!-- views/hbs/partials/footer.hbs --}}
+<hr/>
+<small>© {{year}} HBS Footer</small>
+```
+
+> 참고: `eq`와 같은 헬퍼가 필요합니다(아래 프로젝트 예제에서 등록).
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+한 프로젝트에서 **세 엔진을 모두 등록**하고, 각각 `/ejs`, `/pug`, `/hbs`로 렌더링하는 예제.
+
+### (a) 프로젝트 전체구조
+
+```
+src/11/
+├─ package.json
+├─ app.js
+└─ views/
+   ├─ ejs/
+   │  ├─ index.ejs
+   │  └─ partials/
+   │     └─ footer.ejs
+   ├─ pug/
+   │  ├─ index.pug
+   │  └─ partials/
+   │     └─ footer.pug
+   └─ hbs/
+      ├─ index.hbs
+      └─ partials/
+         └─ footer.hbs
+```
+
+### (b) 각 소스별 주석설명
+
+**package.json**
+
+```json
+{
+  "name": "day12-templates",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-handlebars": "^7.1.3",
+    "pug": "^3.0.2"
+  }
+}
+```
+
+**app.js**
+
+```js
+// 여러 템플릿 엔진(EJS, Pug, Handlebars)을 한 앱에서 비교
+const path = require('path');
+const express = require('express');
+const app = express();
+
+// 1) EJS 등록(기본 view engine은 ejs로 설정)
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs'); // 기본: .ejs
+
+// 2) Pug 등록
+const pug = require('pug');
+app.engine('pug', pug.__express); // .pug 파일 렌더 허용
+
+// 3) Handlebars 등록
+const { engine } = require('express-handlebars');
+app.engine('hbs', engine({
+    extname: '.hbs',
+    // 간단 eq 헬퍼 등록 (if문에서 문자열 비교용)
+    helpers: {
+        eq: (a, b) => String(a) === String(b)
+    },
+    // partialsDir은 views/hbs/partials로 자동 탐색되도록 기본값 사용
+    partialsDir: path.join(__dirname, 'views', 'hbs', 'partials'),
+    defaultLayout: false
+}));
+/*
+ * 주의: app.set('view engine', ...)은 기본 엔진을 지정.
+ * 우리는 기본을 ejs로 두고, pug/hbs는 확장자를 통해 명시적으로 렌더링.
+ */
+
+const sampleData = {
+    title: '템플릿 엔진 비교',
+    user: { name: 'Ada', role: 'admin' },
+    todos: ['공부하기', '운동하기', '코드 작성하기'],
+    htmlSnippet: '<strong>중요</strong>'
+};
+
+app.get('/', (req, res) => {
+    res.send('템플릿 엔진 비교: /ejs, /pug, /hbs 로 이동하세요.');
+});
+
+app.get('/ejs', (req, res) => {
+    // 확장자 없이 'ejs/index'라고 주면 기본 엔진(ejs)로 렌더링
+    res.render('ejs/index', sampleData);
+});
+
+app.get('/pug', (req, res) => {
+    // pug를 사용하려면 확장자를 명시 (index.pug)
+    res.render('pug/index.pug', sampleData);
+});
+
+app.get('/hbs', (req, res) => {
+    // hbs를 사용하려면 확장자를 명시 (index.hbs)
+    res.render('hbs/index.hbs', sampleData);
+});
+
+app.listen(3000, () => {
+    console.log('Server on http://localhost:3000 (EJS/Pug/HBS 비교)');
+});
+
+```
+
+**views/ejs/index.ejs** – 위 2-2 코드 사용  
+**views/ejs/partials/footer.ejs** – 위 2-2 코드 사용
+
+**views/pug/index.pug** – 위 2-3 코드 사용  
+**views/pug/partials/footer.pug** – 위 2-3 코드 사용
+
+**views/hbs/index.hbs** – 위 2-4 코드 사용  
+**views/hbs/partials/footer.hbs** – 위 2-4 코드 사용
+
+#### (c) 빌드방법
+
+```bash
+# 1) 프로젝트 생성
+mkdir day12-templates && cd day12-templates
+npm init -y
+
+# 2) 의존성 설치
+npm i express ejs pug express-handlebars
+
+# 3) 디렉토리/파일 생성
+# (위 구조대로 views/ejs|pug|hbs와 파일들을 작성)
+
+# 4) 실행
+npm start
+# 또는
+node app.js
+
+# 5) 확인
+# 브라우저에서 각각 비교
+http://localhost:3000/ejs
+http://localhost:3000/pug
+http://localhost:3000/hbs
+```
+
+* * *
+
+### 4) 문제(3항)
+
+1.  **빈칸 채우기**
+    *   EJS에서 escape 출력은 `<%= %>`, 원문(unescape) 출력은 `<%- %>` 이다.
+    *   Pug에서 escape 보간은 `#{}`, 원문(unescape) 보간은 `!{}` 이다.
+    *   Handlebars에서 escape 출력은 `{{ }}`, 원문(unescape) 출력은 `{{{ }}}` 이다.  
+        위 문장에서 빈칸에 들어갈 **보간/출력 표기**를 각각 쓰시오.
+2.  **O/X**
+    *   ( ) Express에서 한 애플리케이션에 여러 템플릿 엔진을 동시에 등록할 수 없다.
+    *   ( ) Handlebars에서 `{{#each items}}`는 반복을 의미하며, `{{this}}`는 현재 아이템을 뜻한다.
+3.  **단답**
+    *   Handlebars에서 `user.role`이 `"admin"`인 조건을 템플릿에서 판별하려면 어떤 **헬퍼**를 등록해 사용할 수 있는가? (예: 문자열 동등성 비교) 간단한 함수 형태로 작성하시오.
+
+> 온라인 실습(선택):  
+> • EJS Playground: https://ejs.co/#try  
+> • Pug REPL: https://pugjs.org/language/attributes.html (Docs 내 Try 영역)  
+> • Handlebars Try: https://tryhandlebarsjs.com/
+
+
+
+

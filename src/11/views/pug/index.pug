@@ -1,0 +1,25 @@
+//- views/pug/index.pug
+doctype html
+html
+  head
+    title= title
+  body
+    h1 Pug: #{title}
+
+    p 사용자: #{user.name} (role: #{user.role})
+
+    if user.role === 'admin'
+      p 관리자 전용 메뉴 표시
+    else
+      p 일반 사용자
+
+    h3 오늘의 할 일
+    ul
+      each t in todos
+        li= t
+
+    //- escape vs unescape
+    p escape: #{htmlSnippet}
+    p unescape: !{htmlSnippet}
+
+    include ./partials/footer

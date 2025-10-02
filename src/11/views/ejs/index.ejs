@@ -1,0 +1,33 @@
+<!-- views/ejs/index.ejs -->
+<!DOCTYPE html>
+<html>
+<head><title><%= title %></title></head>
+<body>
+  <h1>EJS: <%= title %></h1>
+
+  <!-- 변수 출력 -->
+  <p>사용자: <%= user.name %> (role: <%= user.role %>)</p>
+
+  <!-- 조건문 -->
+  <% if (user.role === 'admin') { %>
+    <p>관리자 전용 메뉴 표시</p>
+  <% } else { %>
+    <p>일반 사용자</p>
+  <% } %>
+
+  <!-- 반복문 -->
+  <h3>오늘의 할 일</h3>
+  <ul>
+    <% todos.forEach(function(t){ %>
+      <li><%= t %></li>
+    <% }) %>
+  </ul>
+
+  <!-- escape vs unescape -->
+  <p>escape: <%= htmlSnippet %></p>
+  <p>unescape: <%- htmlSnippet %></p>
+
+  <!-- partial include -->
+  <%- include('partials/footer', { year: 2025 }) %>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{{!-- views/hbs/index.hbs --}}
+<!DOCTYPE html>
+<html>
+  <head><title>{{title}}</title></head>
+  <body>
+    <h1>Handlebars: {{title}}</h1>
+
+    <p>사용자: {{user.name}} (role: {{user.role}})</p>
+
+    {{#if (eq user.role "admin")}}
+      <p>관리자 전용 메뉴 표시</p>
+    {{else}}
+      <p>일반 사용자</p>
+    {{/if}}
+
+    <h3>오늘의 할 일</h3>
+    <ul>
+      {{#each todos}}
+        <li>{{this}}</li>
+      {{/each}}
+    </ul>
+
+    <p>escape: {{htmlSnippet}}</p>
+    <p>unescape: {{{htmlSnippet}}}</p>
+
+    {{> footer year=2025}}
+  </body>
+</html>
