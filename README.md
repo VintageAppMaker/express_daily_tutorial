@@ -1503,7 +1503,7 @@ curl -H "Authorization: secrettoken" http://localhost:3000/secure  # → 인증 
 3.  단답: 인증 로직을 공통적으로 처리할 때 사용하는 Express 기능은 무엇인가?
 ```
 
-# Day 12 — 템플릿 엔진 문법 (EJS · Pug · Handlebars)
+# Day 11 — 템플릿 엔진 문법 (EJS · Pug · Handlebars)
 
 ## 1) 기본설명
 
@@ -1833,6 +1833,146 @@ http://localhost:3000/hbs
 > • EJS Playground: https://ejs.co/#try  
 > • Pug REPL: https://pugjs.org/language/attributes.html (Docs 내 Try 영역)  
 > • Handlebars Try: https://tryhandlebarsjs.com/
+
+
+# Day 13 — RESTful API 설계와 Express 라우팅 패턴
+
+
+## 1) 기본설명
+
+-   **RESTful API**란?
+    -   **REST(Representational State Transfer)** 원칙을 기반으로 설계된 API.
+    -   자원(Resource)을 URI로 표현하고, HTTP 메서드(GET, POST, PUT, DELETE 등)로 동작을 구분.
+-   **주요 특징**
+    -   클라이언트-서버 구조
+    -   무상태(Stateless)
+    -   일관된 URI 설계
+    -   표준 HTTP 메서드 활용
+-   **Express 라우팅 패턴**
+    -   REST API에서 라우팅은 핵심.
+    -   표준 HTTP 메서드 활용
+-   **Express 라우팅 패턴**
+    -   `/users`, `/users/:id` 같은 **자원 중심 URI**를 사용.
+    -   메서드별 의미:
+        -   `GET /users` → 전체 사용자 목록
+        -   `POST /users` → 새 사용자 생성
+        -   `GET /users/:id` → 특정 사용자 조회
+        -   `PUT /users/:id` → 사용자 전체 수정
+        -   `DELETE /users/:id` → 사용자 삭제
+
+
+## 2) 코드 중심의 활용예제
+
+```js
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+// 임시 데이터 저장 (DB 대체)
+let users = [
+  { id: 1, name: 'Alice', age: 23 },
+  { id: 2, name: 'Bob', age: 30 }
+];
+
+// 1. 전체 사용자 목록 조회
+app.get('/users', (req, res) => {
+  res.json(users);
+});
+
+// 2. 특정 사용자 조회
+app.get('/users/:id', (req, res) => {
+  const user = users.find(u => u.id === Number(req.params.id));
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json(user);
+});
+
+// 3. 사용자 생성
+app.post('/users', (req, res) => {
+  const newUser = { id: Date.now(), ...req.body };
+  users.push(newUser);
+  res.status(201).json(newUser);
+});
+
+// 4. 사용자 수정 (전체 교체)
+app.put('/users/:id', (req, res) => {
+  const idx = users.findIndex(u => u.id === Number(req.params.id));
+  if (idx === -1) return res.status(404).json({ error: 'User not found' });
+  users[idx] = { id: Number(req.params.id), ...req.body };
+  res.json(users[idx]);
+});
+
+// 5. 사용자 삭제
+app.delete('/users/:id', (req, res) => {
+  users = users.filter(u => u.id !== Number(req.params.id));
+  res.status(204).send(); // 내용 없는 성공 응답
+});
+
+app.listen(3000, () => console.log('RESTful API server on http://localhost:3000'));
+```
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 구조
+
+```
+src/12/
+├─ package.json
+├─ app.js
+```
+
+### (b) 각 소스별 주석 설명
+
+**package.json**
+
+```json
+{
+  "name": "day13-rest-api",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
+```
+
+**app.js**
+
+-   `app.use(express.json())`: JSON 요청 body를 파싱.
+-   `app.get('/users')`: 사용자 목록 조회.
+-   `app.post('/users')`: 새 사용자 생성.
+-   `app.put('/users/:id')`: 기존 사용자 전체 수정.
+-   `app.delete('/users/:id')`: 사용자 삭제.
+
+### (c) 빌드 방법
+
+```bash
+# 1) 폴더 생성
+
+# 2) Express 설치
+npm install express
+
+# 3) 실행
+npm start
+
+# 4) 테스트
+curl http://localhost:3000/users
+curl -X POST http://localhost:3000/users -H "Content-Type: application/json" -d '{"name":"Charlie","age":28}'
+```
+
+## 4) 문제(3항)
+
+1.  **빈칸 채우기**  
+    RESTful API에서 `GET /users/:id`는 특정 \_\_\_\_를 조회한다.  
+    `POST /users`는 새로운 \_\_\_\_를 생성한다.
+2.  **O/X**
+    *   ( ) RESTful API는 무상태(Stateless)성을 유지해야 한다.
+    *   ( ) Express에서 `app.put('/users/:id')`는 부분 수정에 적합하다.
+3.  **단답형**
+    *   부분 수정에 적합한 HTTP 메서드는 무엇인가?
+
 
 
 
