@@ -1975,5 +1975,136 @@ curl -X POST http://localhost:3000/users -H "Content-Type: application/json" -d 
 
 
 
+# Day 13 — Express와 데이터베이스 연동 (SQLite/MySQL/MongoDB)
+
+
+## 1) 기본설명
+
+Express 애플리케이션은 보통 \*\*데이터베이스(DB)\*\*와 연동하여 동적인 데이터를 처리.  
+대표적인 DB는 다음과 같다
+
+-   **SQLite**: 파일 기반 경량 DB. 설치가 간단하고 학습용·소규모 서비스에 적합.
+-   **MySQL**: 대중적으로 가장 많이 쓰이는 관계형 DBMS. 스키마 기반, 복잡한 쿼리와 대규모 서비스에 적합.
+-   **MongoDB**: 문서(Document) 기반 NoSQL DB. JSON과 유사한 BSON 형태로 데이터를 저장하며, 유연한 스키마 설계가 가능.
+
+**Express + DB 연동 흐름**
+
+1.  드라이버 또는 ORM 설치 (예: `sqlite3`, `mysql2`, `mongoose`).
+2.  DB 연결 생성 및 초기화.
+3.  라우트에서 DB 쿼리 실행 → 결과를 JSON으로 응답.
+4.  에러 처리 및 연결 관리.
+
+
+## 2) 코드 중심의 활용예제
+
+### 2-1. SQLite 연동
+
+```js
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const app = express();
+
+app.use(express.json());
+
+// DB 연결
+const db = new sqlite3.Database(':memory:');
+
+// 테이블 초기화
+db.serialize(() => {
+  db.run("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INTEGER)");
+  db.run("INSERT INTO users (name, age) VALUES ('Alice', 25), ('Bob', 30)");
+});
+
+// 전체 사용자 조회
+app.get('/users', (req, res) => {
+  db.all("SELECT * FROM users", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// 사용자 추가
+app.post('/users', (req, res) => {
+  const { name, age } = req.body;
+  db.run("INSERT INTO users (name, age) VALUES (?, ?)", [name, age], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ id: this.lastID, name, age });
+  });
+});
+
+app.listen(3000, () => console.log("SQLite example on http://localhost:3000"));
+```
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 구조
+
+```
+src/13/
+├─ package.json
+├─ app.js
+```
+
+### (b) 각 소스별 주석 설명
+
+**package.json**
+
+```json
+{
+  "name": "day14-db-express",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.6"
+  }
+}
+```
+
+**app.js**
+
+-   `sqlite3.Database(':memory:')`: 메모리 기반 SQLite DB 사용. 파일 기반이라면 `mydb.sqlite` 파일명 지정.
+-   `db.run`: SQL 실행 (INSERT, CREATE 등).
+-   `db.all`: SELECT 후 모든 결과 가져오기.
+-   RESTful API 라우팅으로 사용자 CRUD 구현.
+
+### (c) 빌드 방법
+
+```bash
+# 1) 프로젝트 생성
+# 2) 의존성 설치
+npm install express sqlite3
+
+# 3) app.js 작성 (위 코드 붙여넣기)
+
+# 4) 실행
+node app.js
+
+# 5) 테스트
+curl http://localhost:3000/users
+curl -X POST http://localhost:3000/users -H "Content-Type: application/json" -d '{"name":"Charlie","age":28}'
+```
+
+
+## 4) 문제(3항)
+
+1.  **빈칸 채우기**  
+    Express에서 SQLite를 사용할 때 `db.____("SELECT * FROM users")` 메서드는 SELECT 결과를 모두 가져온다.
+2.  **O/X**
+    *   ( ) MongoDB는 관계형 DB로, 테이블과 스키마를 엄격히 정의해야 한다.
+    *   ( ) `db.run`은 INSERT/UPDATE 같은 변경 쿼리를 실행할 때 사용한다.
+3.  **단답형**
+    *   MySQL에서 Express와 연결하기 위해 자주 사용하는 Node.js용 패키지 이름은 무엇인가?
+
+
+
+
+
+
+
 
 
