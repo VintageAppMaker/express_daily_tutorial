@@ -2100,6 +2100,151 @@ curl -X POST http://localhost:3000/users -H "Content-Type: application/json" -d 
 3.  **단답형**
     *   MySQL에서 Express와 연결하기 위해 자주 사용하는 Node.js용 패키지 이름은 무엇인가?
 
+# Day 14 — Express에서 비동기 처리와 async/await
+
+
+## 1) 기본설명
+
+Express 애플리케이션은 **비동기(Asynchronous)** 방식으로 요청을 처리한다.  
+Node.js의 이벤트 루프(Event Loop)는 I/O 작업(파일 읽기, DB 쿼리, 외부 API 호출 등)을 기다리는 동안 다른 요청을 처리하여 **논블로킹(Non-blocking)** 성능을 제공한다.
+
+### node.js 비동기 처리 방식의 발전 단계
+
+1.  **콜백(callback)** — 가장 기본적인 비동기 처리 방식  
+    → 중첩이 깊어지면 “콜백 지옥(callback hell)” 발생
+2.  **Promise** — 비동기 결과를 체이닝(`then`, `catch`)으로 처리 가능
+3.  **async/await** — Promise를 동기식 코드처럼 다룰 수 있는 문법  
+    → 가독성 향상, 에러 처리가 간단해짐
+
+### Express에서의 비동기 처리 예
+
+라우터 핸들러에서 DB 쿼리, 파일 읽기, 외부 API 호출 등은 대부분 비동기이므로 `async/await`을 자주 사용한다.
+
+
+## 2) 코드 중심의 활용예제
+
+```js
+const express = require('express');
+const fs = require('fs').promises;
+const app = express();
+
+app.get('/read-file', async (req, res) => {
+  try {
+    const data = await fs.readFile('data.txt', 'utf-8');
+    res.send(`파일 내용: ${data}`);
+  } catch (error) {
+    res.status(500).send('파일을 읽는 중 오류가 발생했습니다.');
+  }
+});
+
+app.get('/wait', async (req, res) => {
+  const result = await new Promise(resolve => {
+    setTimeout(() => resolve('3초 후 응답 완료'), 3000);
+  });
+  res.send(result);
+});
+
+app.listen(3000, () => console.log('Async server on http://localhost:3000'));
+```
+
+### 설명
+
+*   `fs.promises.readFile` : Promise 기반 파일 읽기 함수.
+*   `async` 함수 내부에서 `await`는 Promise가 완료될 때까지 기다림.
+*   `try...catch` 블록으로 비동기 예외 처리.
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 구조
+
+```
+src/14/
+├─ package.json
+├─ app.js
+├─ data.txt
+```
+
+### (b) 각 소스별 주석 설명
+
+**package.json**
+
+```json
+{
+  "name": "day14-async-await",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
+```
+
+**data.txt**
+
+```
+안녕하세요! 이것은 비동기 파일 읽기 테스트입니다.
+```
+
+**app.js**
+
+```js
+const express = require('express');
+const fs = require('fs').promises;
+const app = express();
+
+// async/await 사용 예제
+app.get('/read-file', async (req, res) => {
+  try {
+    const content = await fs.readFile('data.txt', 'utf-8');
+    res.send(`파일 내용: ${content}`);
+  } catch (err) {
+    res.status(500).send('파일을 읽는 중 오류가 발생했습니다.');
+  }
+});
+
+// 비동기 지연 테스트
+app.get('/delay', async (req, res) => {
+  const msg = await new Promise(resolve => setTimeout(() => resolve('3초 후 응답 완료'), 3000));
+  res.send(msg);
+});
+
+app.listen(3000, () => console.log('서버 실행 중: http://localhost:3000'));
+```
+
+### (c) 빌드 방법
+
+```bash
+# 1) 프로젝트 생성
+
+
+# 2) Express 설치
+npm install express
+
+# 3) 파일 작성 (app.js, data.txt)
+
+# 4) 실행
+node app.js
+
+# 5) 테스트
+curl http://localhost:3000/read-file
+curl http://localhost:3000/delay
+```
+
+
+## 4) 문제(3항)
+
+1.  **빈칸 채우기**  
+    `async` 함수 내부에서 비동기 작업을 기다릴 때 사용하는 키워드는 \_\_\_\_ 이다.
+2.  **O/X**
+    *   ( ) `await` 키워드는 `async` 함수 밖에서도 사용할 수 있다.
+    *   ( ) `try...catch` 문은 비동기 함수 내의 에러를 처리할 때 유용하다.
+3.  **단답형**  
+    Promise 대신 `async/await` 문법을 사용하는 주요 이유는 코드의 \_\_\_\_를 높이기 위해서이다.
+
 
 
 
