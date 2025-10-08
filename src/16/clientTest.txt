@@ -1,0 +1,4 @@
+curl -X POST http://localhost:3000/login -H "Content-Type: application/json" -d '{"username":"admin","password":"1234"}'
+
+# 보호된 페이지 접근 (토큰 복사 후)
+curl -H "Authorization: Bearer <발급된 토큰>" http://localhost:3000/secure

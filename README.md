@@ -37,7 +37,7 @@ node check.js
 ![](images/0_1.jpg)
 
 
-# Day 1 — 1.1 Node.js란?
+# Day 1 — Node.js란?
 
 ## 1) 기본설명
 
@@ -124,7 +124,7 @@ src/1/
 
 
 
-# Day 2 — 1.2 Node.js의 특징 (이벤트 루프 & 논블로킹 I/O)
+# Day 2 — Node.js의 특징 (이벤트 루프 & 논블로킹 I/O)
 
 
 ## 1) 기본설명
@@ -294,7 +294,7 @@ npm run bench
     한 문장으로 설명하시오.
 ```
 
-# Day 3 — 2.1 Express.js 소개
+# Day 3 — Express.js 소개
 
 ## 1) 기본설명
 
@@ -416,7 +416,7 @@ http://localhost:3000
 3.  단답: Express 앱에서 HTTP GET 요청에 응답하려면 어떤 메서드를 사용해야 하는가?
 ```
 
-# Day 4 — 2.2 Express.js 라우팅 기본
+# Day 4 — Express.js 라우팅 기본
 
 ## 1) 기본설명
 
@@ -552,7 +552,7 @@ curl -X POST http://localhost:3000/login
 ```
 
 
-# Day 5 — 2.3 Express.js 미들웨어 기본
+# Day 5 — Express.js 미들웨어 기본
 
 ## 1) 기본설명
 
@@ -697,7 +697,7 @@ curl http://localhost:3000/about
 
 
 
-# Day 6 — 2.4 Express.js 정적 파일 제공
+# Day 6 — Express.js 정적 파일 제공
 
 ## 1) 기본설명
 
@@ -850,7 +850,7 @@ http://localhost:3000/index.html
 3.  단답: `public` 폴더 안에 있는 `style.css`를 브라우저에서 불러오려면 어떤 URL로 접근해야 하는가?
 ```
 
-# Day 7 — 2.5 Express.js 요청과 응답 객체
+# Day 7 — Express.js 요청과 응답 객체
 
 ## 1) 기본설명
 
@@ -1010,7 +1010,7 @@ curl -v http://localhost:3000/old-route
 3.  단답: 클라이언트를 다른 URL로 이동시키는 데 사용하는 `res` 메서드는 무엇인가?
 ```
 
-# Day 8 — 2.6 Express.js 라우터 모듈화
+# Day 8 — Express.js 라우터 모듈화
 
 ## 1) 기본설명
 
@@ -1210,7 +1210,7 @@ curl -X POST http://localhost:3000/products
 3.  단답: `/users/:id` 경로를 처리하는 라우트를 만들기 위해 사용하는 Express 객체는 무엇인가?
 ```
 
-# Day 9 — 2.7 Express.js 에러 처리
+# Day 9 — Express.js 에러 처리
 
 ## 1) 기본설명
 
@@ -1344,7 +1344,7 @@ curl http://localhost:3000/error
 2.  O/X: 일반 미들웨어에서 `next(err)`를 호출하면 에러 처리 미들웨어로 제어가 넘어간다.
 3.  단답: 클라이언트에게 HTTP 상태 코드 500과 JSON 응답을 동시에 보내려면 어떤 `res` 메서드 체인을 사용하는가?
 ```
-# Day 10 — 2.8 Express.js 미들웨어 고급
+# Day 10 — Express.js 미들웨어 고급
 
 ## 1) 기본설명
 
@@ -1835,7 +1835,7 @@ http://localhost:3000/hbs
 > • Handlebars Try: https://tryhandlebarsjs.com/
 
 
-# Day 13 — RESTful API 설계와 Express 라우팅 패턴
+# Day 12 — RESTful API 설계와 Express 라우팅 패턴
 
 
 ## 1) 기본설명
@@ -2246,6 +2246,464 @@ curl http://localhost:3000/delay
     Promise 대신 `async/await` 문법을 사용하는 주요 이유는 코드의 \_\_\_\_를 높이기 위해서이다.
 
 
+
+# Day 15 — 인증(Authentication)과 세션/쿠키 관리
+
+
+## 1) 기본설명
+
+웹 애플리케이션에서 \*\*인증(Authentication)\*\*은 사용자의 신원을 검증하는 과정이며, \*\*인가(Authorization)\*\*는 인증된 사용자의 권한을 판단하는 과정이다.  
+Express에서는 이러한 인증 로직을 구현하기 위해 \*\*쿠키(Cookie)\*\*와 \*\*세션(Session)\*\*을 자주 사용한다.
+
+### 쿠키(Cookie)
+
+-   클라이언트(브라우저)에 저장되는 작은 데이터 조각.
+-   서버는 응답 헤더(`Set-Cookie`)를 통해 쿠키를 설정.
+-   이후 클라이언트는 요청 시 자동으로 쿠키를 전송.
+
+#### 세션(Session)
+
+-   서버 측에서 사용자별 상태 정보를 저장.
+-   쿠키에는 세션 ID만 저장하고, 실제 데이터는 서버 메모리나 DB에 저장.
+-   Express에서는 `express-session` 미들웨어를 통해 쉽게 구현 가능.
+
+#### 인증 흐름
+
+1.  사용자가 로그인 정보를 제출 (`POST /login`)
+2.  서버에서 사용자 검증 후 세션 생성
+3.  세션 ID를 쿠키에 담아 클라이언트로 전달
+4.  클라이언트는 이후 모든 요청 시 쿠키를 전송
+5.  서버는 쿠키의 세션 ID를 확인해 로그인 상태 유지
+
+
+## 2) 코드 중심의 활용예제
+
+```js
+const express = require('express');
+const session = require('express-session');
+const app = express();
+
+app.use(express.json());
+app.use(session({
+  secret: 'mySecretKey',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { maxAge: 60000 } // 1분 유지
+}));
+
+const USERS = { admin: '1234', user: 'abcd' };
+
+// 로그인
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  if (USERS[username] === password) {
+    req.session.user = username;
+    res.send(`로그인 성공: ${username}`);
+  } else {
+    res.status(401).send('로그인 실패');
+  }
+});
+
+// 인증된 사용자만 접근 가능
+app.get('/dashboard', (req, res) => {
+  if (!req.session.user) return res.status(403).send('로그인이 필요합니다.');
+  res.send(`환영합니다, ${req.session.user}님!`);
+});
+
+// 로그아웃
+app.post('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.send('로그아웃 완료');
+  });
+});
+
+app.listen(3000, () => console.log('Auth server on http://localhost:3000'));
+```
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 구조
+
+```
+src/15/
+├─ package.json
+├─ app.js
+```
+
+### (b) 각 소스별 주석 설명
+
+**package.json**
+
+```json
+{
+  "name": "day15-auth-session",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-session": "^1.17.3"
+  }
+}
+```
+
+**app.js**
+
+-   `express-session`: 세션 관리 미들웨어.
+-   `secret`: 세션 암호화 키.
+-   `resave`: 세션이 수정되지 않아도 저장할지 여부.
+-   `saveUninitialized`: 초기 세션도 저장할지 여부.
+-   `/login`: 로그인 처리.
+-   `/dashboard`: 로그인된 사용자만 접근 허용.
+-   `/logout`: 세션 제거 및 로그아웃 처리.
+
+### (c) 빌드 방법
+
+```bash
+# 1) 프로젝트 생성
+
+# 2) 의존성 설치
+npm install express express-session
+
+# 3) app.js 작성 (위 코드 붙여넣기)
+
+# 4) 서버 실행
+node app.js
+
+# 5) 테스트
+curl -X POST http://localhost:3000/login -H "Content-Type: application/json" -d '{"username":"admin","password":"1234"}'
+curl http://localhost:3000/dashboard
+curl -X POST http://localhost:3000/logout
+```
+
+## 4) 문제(3항)
+
+1.  **빈칸 채우기**  
+    Express에서 세션을 관리하기 위해 사용하는 주요 미들웨어는 **\_\_\_\_** 이다.
+2.  **O/X**
+    *   ( ) 쿠키는 서버에 저장되고, 세션은 클라이언트에 저장된다.
+    *   ( ) 세션은 서버 메모리나 데이터베이스에 저장될 수 있다.
+3.  **단답형**  
+    세션에서 사용자의 로그인 정보를 삭제하기 위해 호출하는 메서드는 무엇인가?
+
+
+# Day 16 — JWT(JSON Web Token) 인증 적용
+
+
+## 1) 기본설명
+
+\*\*JWT(JSON Web Token)\*\*는 서버와 클라이언트 간에 인증 정보를 안전하게 전송하기 위한 토큰 기반 인증 방식.
+세션과 달리, 서버가 로그인 상태를 직접 저장하지 않고 **클라이언트가 토큰을 보관**하는 구조로 동작.
+
+### JWT 구조
+
+JWT는 3개의 부분으로 구성:
+
+```
+header.payload.signature
+```
+
+-   **Header**: 토큰의 타입과 해싱 알고리즘 정보 (예: HS256)
+-   **Payload**: 사용자 정보(예: id, email)와 만료 시간(`exp`)
+-   **Signature**: Header + Payload를 비밀키로 서명한 값
+
+예시:
+
+```json
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
+eyJ1c2VySWQiOiIxMjMiLCJlbWFpbCI6ImFkbWluQHRlc3QuY29tIiwiZXhwIjoxNzAwMDAwMDB9.
+F3xRr-JvYZi7WJ1ObY1YgE-h5xKcR_12wxyxK1oZpXQ
+```
+
+### JWT 인증 흐름
+
+1.  클라이언트가 로그인 정보를 서버에 전달.
+2.  서버가 검증 후 JWT를 생성하여 클라이언트에 전달.
+3.  클라이언트는 이후 요청 시 `Authorization: Bearer <token>` 헤더로 토큰을 전송.
+4.  서버는 토큰을 검증하여 사용자 인증 여부를 판단.
+
+
+## 2) 코드 중심의 활용예제
+
+```js
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const app = express();
+
+app.use(express.json());
+
+const SECRET_KEY = 'mySecretKey'; // 실제 환경에서는 .env 파일로 분리
+
+// 로그인 엔드포인트 - JWT 발급
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+
+  // 예시용 계정
+  if (username === 'admin' && password === '1234') {
+    const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
+    res.json({ message: '로그인 성공', token });
+  } else {
+    res.status(401).json({ message: '로그인 실패' });
+  }
+});
+
+// JWT 인증 미들웨어
+function verifyToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer 토큰 추출
+
+  if (!token) return res.status(403).json({ message: '토큰이 없습니다.' });
+
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) return res.status(403).json({ message: '유효하지 않은 토큰입니다.' });
+    req.user = user;
+    next();
+  });
+}
+
+// 보호된 라우트
+app.get('/secure', verifyToken, (req, res) => {
+  res.json({ message: `인증된 사용자: ${req.user.username}` });
+});
+
+app.listen(3000, () => console.log('JWT 서버 실행 중: http://localhost:3000'));
+```
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 구조
+
+```
+src/16/
+├── package.json
+├── app.js
+```
+
+### (b) 각 소스별 주석 설명
+
+**package.json**
+
+```json
+{
+  "name": "day16-jwt-auth",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": { "start": "node app.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
+```
+
+**app.js**
+
+*   `/login`: 로그인 후 JWT 발급 (`jsonwebtoken.sign` 사용)
+*   `/secure`: 토큰 검증 후 접근 가능한 보호된 경로
+*   `verifyToken`: 토큰 유효성 검사 미들웨어
+
+### (c) 빌드 및 실행 방법
+
+```bash
+# 1) 프로젝트 생성
+
+# 2) 패키지 설치
+npm install express jsonwebtoken
+
+# 3) 서버 실행
+node app.js
+
+# 4) 테스트
+# 로그인 요청
+curl -X POST http://localhost:3000/login -H "Content-Type: application/json" -d '{"username":"admin","password":"1234"}'
+
+# 보호된 페이지 접근 (토큰 복사 후)
+curl -H "Authorization: Bearer <발급된 토큰>" http://localhost:3000/secure
+```
+
+### 4) 문제 (3항)
+
+1.  **빈칸 채우기**  
+    JWT는 `Header.Payload.____` 형식으로 구성된다.
+2.  **O/X**
+    *   ( ) JWT는 서버에 로그인 세션을 저장해야 한다.
+    *   ( ) JWT는 클라이언트가 토큰을 보관하고, 서버는 이를 검증만 한다.
+3.  **단답형**  
+    Express에서 JWT를 생성할 때 사용하는 주요 함수는 `jsonwebtoken` 모듈의 **\_\_\_\_** 메서드이다.
+
+* * *
+
+
+# Day 17 — 파일 업로드 (multer 미들웨어 활용)
+
+
+## 1) 기본설명
+
+**파일 업로드**는 웹 애플리케이션에서 이미지, 문서 등을 서버로 전송할 때 사용되는 기능.  
+Express에서는 이를 간단히 구현하기 위해 **`multer`** 라는 미들웨어를 활용.
+
+####  multer의 특징
+
+-   multipart/form-data 형식의 요청을 처리
+-   파일 저장 경로 및 파일명 지정 가능
+-   여러 파일 업로드 지원 (`single`, `array`, `fields`)
+-   업로드한 파일의 정보(`req.file`, `req.files`)를 쉽게 조회 가능
+
+###  파일 업로드 기본 흐름
+
+1.  클라이언트가 HTML form 또는 API로 파일을 업로드
+2.  multer가 요청을 분석하여 서버 디스크(또는 메모리)에 저장
+3.  Express가 파일 관련 정보(`req.file`)를 사용하여 처리
+
+
+## 2) 코드 중심의 활용예제
+
+```js
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+
+const app = express();
+
+// 파일 저장 설정
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // 저장 경로
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // 고유한 파일명
+  }
+});
+
+const upload = multer({ storage });
+
+// 업로드 폼
+app.get('/', (req, res) => {
+  res.send(`
+    <h2>파일 업로드 테스트</h2>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+      <input type="file" name="myFile" />
+      <button type="submit">업로드</button>
+    </form>
+  `);
+});
+
+// 파일 업로드 처리
+app.post('/upload', upload.single('myFile'), (req, res) => {
+  console.log(req.file);
+  res.send(`파일 업로드 성공! 저장 파일명: ${req.file.filename}`);
+});
+
+app.listen(3000, () => console.log('파일 업로드 서버 실행: http://localhost:3000'));
+```
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 구조
+
+```
+src/17/
+├── package.json
+├── app.js
+├── uploads/        # 업로드된 파일 저장 폴더
+```
+
+### (b) 각 소스별 주석 설명
+
+**package.json**
+
+```json
+{
+  "name": "day17-file-upload",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": { "start": "node app.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}
+```
+
+**app.js**
+
+```js
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const app = express();
+
+// uploads 폴더 없으면 생성
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
+
+// 저장 설정
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+
+const upload = multer({ storage });
+
+// 업로드 폼 라우트
+app.get('/', (req, res) => {
+  res.send(`
+    <h3>파일 업로드 테스트</h3>
+    <form method="POST" action="/upload" enctype="multipart/form-data">
+      <input type="file" name="myFile" />
+      <button type="submit">전송</button>
+    </form>
+  `);
+});
+
+// 업로드 처리
+app.post('/upload', upload.single('myFile'), (req, res) => {
+  console.log('업로드된 파일 정보:', req.file);
+  res.send(`업로드 성공! 파일명: ${req.file.filename}`);
+});
+
+app.listen(3000, () => console.log('http://localhost:3000 에서 서버 실행 중'));
+```
+
+### (c) 빌드 및 실행 방법
+
+```bash
+# 1) 프로젝트 생성
+
+# 2) 패키지 설치
+npm install express multer
+
+# 3) uploads 폴더 생성
+mkdir uploads
+
+# 4) 서버 실행
+node app.js
+```
+
+### (d) 테스트 방법
+
+1.  브라우저에서 `http://localhost:3000` 접속
+2.  파일 선택 후 "업로드" 클릭
+3.  `uploads` 폴더에 업로드된 파일 확인
+
+
+## 4) 문제 (3항)
+
+1.  **빈칸 채우기**  
+    multer는 `multipart/____` 형식의 요청을 처리하기 위한 미들웨어이다.
+2.  **O/X**
+    *   ( ) `upload.single()`은 여러 개의 파일을 동시에 업로드할 수 있다.
+    *   ( ) 업로드된 파일 정보는 `req.file`을 통해 접근할 수 있다.
+3.  **단답형**  
+    multer에서 파일 저장 경로와 이름을 제어할 때 사용하는 옵션 객체는 `____` 이다.
 
 
 
