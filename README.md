@@ -2374,9 +2374,7 @@ npm install express express-session
 node app.js
 
 # 5) 테스트
-curl -X POST http://localhost:3000/login -H "Content-Type: application/json" -d '{"username":"admin","password":"1234"}'
-curl http://localhost:3000/dashboard
-curl -X POST http://localhost:3000/logout
+# 예제소스에 테스트 화면 제공.
 ```
 
 ## 4) 문제(3항)
@@ -2704,6 +2702,159 @@ node app.js
     *   ( ) 업로드된 파일 정보는 `req.file`을 통해 접근할 수 있다.
 3.  **단답형**  
     multer에서 파일 저장 경로와 이름을 제어할 때 사용하는 옵션 객체는 `____` 이다.
+
+
+#  Day 18 — CORS와 보안 (helmet, rate-limiter 등)
+
+## 1) 기본설명
+
+Express.js를 이용한 웹 개발에서 **보안(Security)** 은 매우 중요하다. 
+특히 API 서버를 외부와 통신할 때, **CORS 설정**, **HTTP 헤더 보안**, **요청 제한(rate limiting)** 등이 필수이다.
+
+### CORS (Cross-Origin Resource Sharing)
+
+-   **CORS**는 브라우저가 다른 도메인(origin)에서 API 요청을 보낼 수 있도록 허용하는 메커니즘.
+-   Express에서는 `cors` 미들웨어를 사용해 간단히 설정.
+
+### helmet
+
+-   `helmet`은 여러 보안 관련 HTTP 헤더를 자동으로 설정하여 공격 위험을 줄임.
+-   예: XSS 방지, MIME 타입 스니핑 방지, HSTS 적용 등등
+
+### express-rate-limit
+
+-   `express-rate-limit`은 일정 시간 동안 요청 횟수를 제한하여 **DDoS 공격**이나 **Brute-force 로그인 공격**을 방지.
+
+
+## 2) 코드 중심의 활용예제
+
+```js
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+const app = express();
+
+// CORS 설정 (특정 도메인만 허용)
+app.use(cors({
+  origin: 'http://localhost:4000',
+  methods: ['GET', 'POST']
+}));
+
+// Helmet 보안 설정
+app.use(helmet());
+
+// 요청 제한 (IP당 1분에 최대 10회)
+const limiter = rateLimit({
+  windowMs: 60 * 1000, // 1분
+  max: 10,
+  message: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.'
+});
+app.use(limiter);
+
+// 테스트용 라우트
+app.get('/', (req, res) => {
+  res.send('보안 미들웨어가 적용된 Express 서버');
+});
+
+app.listen(3000, () => console.log('보안 서버 실행 중: http://localhost:3000'));
+```
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 구조
+
+```
+src/18/
+├── package.json
+├── app.js
+```
+
+### (b) 각 소스별 주석 설명
+
+**package.json**
+
+```json
+{
+  "name": "day18-security",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": { "start": "node app.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.3.0"
+  }
+}
+```
+
+**app.js**
+
+```js
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+const app = express();
+
+// 1️⃣ CORS: 특정 도메인만 허용
+app.use(cors({
+  origin: 'http://localhost:4000', // 허용할 프론트엔드 주소
+  methods: ['GET', 'POST']
+}));
+
+// 2️⃣ Helmet: 다양한 보안 헤더 적용
+app.use(helmet());
+
+// 3️⃣ Rate Limiter: 요청 제한
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1분
+  max: 10, // 최대 요청 10회
+  message: '요청이 너무 많습니다. 나중에 다시 시도하세요.'
+});
+app.use(limiter);
+
+// 테스트 라우트
+app.get('/', (req, res) => {
+  res.send('CORS, Helmet, Rate Limit 적용 서버입니다.');
+});
+
+app.listen(3000, () => console.log('http://localhost:3000 서버 실행 중'));
+```
+
+#### (c) 빌드 및 실행 방법
+
+```bash
+# 1) 프로젝트 생성
+
+# 2) 필요한 패키지 설치
+npm install express cors helmet express-rate-limit
+
+# 3) 서버 실행
+node app.js
+```
+
+### (d) 테스트
+
+*   브라우저에서 `http://localhost:3000` 접속
+*   요청을 10회 이상 반복하면 rate limit 메시지 출력
+*   다른 도메인(예: `localhost:5000`)에서 요청 시 CORS 차단 확인
+
+
+## 4) 문제 (3항)
+
+1.  **빈칸 채우기**  
+    Express에서 특정 도메인만 API 요청을 허용하기 위해 사용하는 미들웨어는 `____` 이다.
+2.  **O/X**
+    *   ( ) `helmet`은 XSS 공격을 방어하기 위해 HTTP 헤더를 자동 설정한다.
+    *   ( ) `express-rate-limit`은 요청을 무제한 허용하도록 하는 기능이다.
+3.  **단답형**  
+    `express-rate-limit` 미들웨어에서 요청 제한 간격을 설정하는 속성 이름은 **\_\_\_\_** 이다.
+
 
 
 
