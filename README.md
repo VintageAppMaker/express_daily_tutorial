@@ -2856,9 +2856,180 @@ node app.js
     `express-rate-limit` 미들웨어에서 요청 제한 간격을 설정하는 속성 이름은 **\_\_\_\_** 이다.
 
 
+# Day 20 — Express 프로젝트 구조화
+
+## 1) 기본설명
+
+Express 프로젝트가 커질수록 라우트, 컨트롤러, 미들웨어, 설정 파일 등을 체계적으로 관리해야 유지보수가 쉬워진다. 단일 `app.js` 파일에 모든 로직을 넣으면 관리가 어렵고, 확장이 힘들어진다.
+
+**프로젝트 구조화**는 다음과 같은 방법을 추천한다.
+
+-   **라우트 분리**: URL 경로별로 라우트 파일 분리 (`routes/`)
+-   **컨트롤러 분리**: 요청 처리 로직은 별도 모듈로 (`controllers/`)
+-   **미들웨어 분리**: 인증, 로깅 등 재사용 가능한 기능은 (`middlewares/`)
+-   **환경설정 분리**: `.env`와 `config/`로 관리
+
+###  구조화의 장점
+
+-   유지보수성 향상
+-   코드 가독성 및 재사용성 증가
+-   테스트 및 확장 용이
 
 
+## 2) 코드 중심의 활용예제
+
+```js
+// app.js
+const express = require('express');
+const userRouter = require('./routes/user');
+const postRouter = require('./routes/post');
+const helmet = require('helmet');
+const morgan = require('morgan');
+require('dotenv').config();
+
+const app = express();
+app.use(express.json());
+app.use(helmet());
+app.use(morgan('dev'));
+
+// 라우트 등록
+app.use('/users', userRouter);
+app.use('/posts', postRouter);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`서버 실행 중: http://localhost:${PORT}`));
+```
+
+```js
+// routes/user.js
+const express = require('express');
+const { getUsers, createUser } = require('../controllers/userController');
+const router = express.Router();
+
+router.get('/', getUsers);
+router.post('/', createUser);
+
+module.exports = router;
+```
+
+```js
+// controllers/userController.js
+exports.getUsers = (req, res) => {
+  res.json([{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }]);
+};
+
+exports.createUser = (req, res) => {
+  const { name } = req.body;
+  res.status(201).json({ message: `사용자 ${name} 생성 완료` });
+};
+```
 
 
+## 3) 데스크탑에서 빌드할 수 있는 예제
 
+### (a) 프로젝트 구조
+
+```
+src/19/
+├── app.js
+├── package.json
+├── .env
+├── routes/
+│   ├── user.js
+│   └── post.js
+├── controllers/
+│   ├── userController.js
+│   └── postController.js
+└── middlewares/
+    └── logger.js
+```
+
+### (b) 각 소스별 주석 설명
+
+**package.json**
+
+```json
+{
+  "name": "day19-structured-express",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": { "start": "node app.js" },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0"
+  }
+}
+```
+
+**.env**
+
+```
+PORT=3000
+```
+
+**routes/post.js**
+
+```js
+const express = require('express');
+const { getPosts } = require('../controllers/postController');
+const router = express.Router();
+
+router.get('/', getPosts);
+
+module.exports = router;
+```
+
+**controllers/postController.js**
+
+```js
+exports.getPosts = (req, res) => {
+  res.json([{ id: 1, title: 'Hello Express', author: 'Admin' }]);
+};
+```
+
+**middlewares/logger.js**
+
+```js
+module.exports = function (req, res, next) {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+};
+```
+
+### (c) 빌드 및 실행 방법
+
+```bash
+# 1) 프로젝트 생성
+
+# 2) 패키지 설치
+npm install express dotenv helmet morgan
+
+# 3) 디렉토리 구성
+mkdir routes controllers middlewares
+touch app.js .env routes/user.js controllers/userController.js
+
+# 4) 서버 실행
+node app.js
+
+# 5) 테스트 
+
+# 사용자 목록 조회
+curl -X GET http://localhost:3000/users
+# 새 사용자 생성
+curl -X POST http://localhost:3000/users -H "Content-Type: application/json" -d '{"name": "User"}'
+# 게시글 목록 조회
+curl -X GET http://localhost:3000/posts
+```
+
+## 4) 문제 (3항)
+
+1.  **빈칸 채우기**  
+    Express 프로젝트 구조화에서 각 요청의 실제 처리 로직을 분리하는 파일은 `____` 폴더에 위치한다.
+2.  **O/X**
+    *   ( ) `routes` 폴더는 API 경로를 정의하는 파일들을 포함한다.
+    *   ( ) 모든 미들웨어는 반드시 `app.js` 파일 안에 직접 작성해야 한다.
+3.  **단답형**  
+    환경 변수를 로드하기 위해 사용하는 패키지는 **\_\_\_\_** 이다.
 
