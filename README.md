@@ -3033,3 +3033,336 @@ curl -X GET http://localhost:3000/posts
 3.  **단답형**  
     환경 변수를 로드하기 위해 사용하는 패키지는 **\_\_\_\_** 이다.
 
+# Day 20 — 간단한 블로그 만들기 (CRUD + SQLite) 를 **Static HTML**과 연동
+
+
+## 1) 기본설명
+
+서버(API)와 정적 프론트엔드(HTML/CSS/JS)를 **같은 Express 앱**에서 제공하여, 브라우저에서 바로 CRUD를 테스트.
+
+-   **서버(Express + SQLite)**
+    *   REST API: `GET/POST/PUT/DELETE /posts`
+    *   DB 파일: `blog.db` (없으면 자동 생성)
+-   **프론트엔드(Static HTML + Fetch API)**
+    *   `public/` 폴더를 `express.static`으로 서빙
+    *   `index.html` + `script.js`에서 API 호출로 목록/작성/수정/삭제 구현
+-   **장점**: 같은 Origin에서 동작 → CORS 불필요, 구성 단순
+
+
+## 2) 코드 중심의 활용예제
+
+### 서버: `app.js`
+
+```js
+// app.js
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+
+const app = express();
+const DB_PATH = path.join(__dirname, 'blog.db');
+const db = new sqlite3.Database(DB_PATH);
+
+// Body 파서
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 정적 파일 제공: public 폴더
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 테이블 생성
+db.run(`CREATE TABLE IF NOT EXISTS posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title   TEXT NOT NULL,
+  content TEXT NOT NULL,
+  author  TEXT DEFAULT 'Anonymous',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+// REST API ------------------------------
+// 목록
+app.get('/posts', (req, res) => {
+  db.all('SELECT * FROM posts ORDER BY id DESC', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// 상세
+app.get('/posts/:id', (req, res) => {
+  db.get('SELECT * FROM posts WHERE id=?', [req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Not Found' });
+    res.json(row);
+  });
+});
+
+// 생성
+app.post('/posts', (req, res) => {
+  const { title, content, author } = req.body;
+  if (!title || !content) return res.status(400).json({ error: 'title, content 필수' });
+
+  db.run(
+    'INSERT INTO posts (title, content, author) VALUES (?, ?, ?)',
+    [title, content, author || 'Anonymous'],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.status(201).json({ id: this.lastID, title, content, author: author || 'Anonymous' });
+    }
+  );
+});
+
+// 수정(전체 업데이트)
+app.put('/posts/:id', (req, res) => {
+  const { title, content, author } = req.body;
+  if (!title || !content) return res.status(400).json({ error: 'title, content 필수' });
+
+  db.run(
+    'UPDATE posts SET title=?, content=?, author=? WHERE id=?',
+    [title, content, author || 'Anonymous', req.params.id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'Not Found' });
+      res.json({ id: Number(req.params.id), title, content, author: author || 'Anonymous' });
+    }
+  );
+});
+
+// 삭제
+app.delete('/posts/:id', (req, res) => {
+  db.run('DELETE FROM posts WHERE id=?', [req.params.id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Not Found' });
+    res.status(204).send();
+  });
+});
+
+// 서버 시작
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server: http://localhost:${PORT}`));
+```
+
+### 프론트엔드: `public/index.html`
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>블로그 CRUD (Express + SQLite)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 32px auto; padding: 0 16px; }
+    h1 { margin-bottom: 8px; }
+    form, .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 12px 0; }
+    input, textarea { width: 100%; padding: 8px; margin: 6px 0 12px; border: 1px solid #ccc; border-radius: 8px; }
+    button { padding: 8px 12px; border: 0; border-radius: 8px; cursor: pointer; }
+    .primary { background:#2563eb; color:#fff; }
+    .ghost { background:#eee; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .meta { color:#666; font-size: 12px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>블로그 CRUD</h1>
+  <p>아래 폼으로 글을 작성하고, 목록에서 **수정/삭제**할 수 있습니다.</p>
+
+  <form id="createForm">
+    <h2>새 글 작성</h2>
+    <input name="title" placeholder="제목" required />
+    <textarea name="content" rows="4" placeholder="내용" required></textarea>
+    <input name="author" placeholder="작성자 (선택)" />
+    <div class="row">
+      <button class="primary" type="submit">등록</button>
+      <button class="ghost" type="reset">초기화</button>
+    </div>
+  </form>
+
+  <h2>게시글 목록</h2>
+  <div id="list"></div>
+
+  <script src="./script.js"></script>
+</body>
+</html>
+```
+
+### 프론트엔드: `public/script.js`
+
+```js
+const $list = document.getElementById('list');
+const $form = document.getElementById('createForm');
+
+async function fetchJSON(url, options) {
+  const res = await fetch(url, options);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || res.statusText);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+async function loadPosts() {
+  $list.innerHTML = '로딩 중...';
+  try {
+    const posts = await fetchJSON('/posts');
+    if (!posts.length) { $list.innerHTML = '<p>등록된 글이 없습니다.</p>'; return; }
+    $list.innerHTML = posts.map(renderCard).join('');
+    bindCardEvents();
+  } catch (e) {
+    $list.innerHTML = `<p style="color:red">불러오기 실패: ${e.message}</p>`;
+  }
+}
+
+function renderCard(p) {
+  return `
+  <div class="card" data-id="${p.id}">
+    <strong>#${p.id}. ${escapeHtml(p.title)}</strong>
+    <div class="meta">by ${escapeHtml(p.author || 'Anonymous')} · ${p.created_at || ''}</div>
+    <p>${escapeHtml(p.content)}</p>
+    <div class="row">
+      <button class="ghost btn-edit">수정</button>
+      <button class="ghost btn-delete">삭제</button>
+    </div>
+  </div>`;
+}
+
+function bindCardEvents() {
+  document.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.onclick = async (e) => {
+      const id = e.target.closest('.card').dataset.id;
+      if (!confirm(`#${id} 글을 삭제할까요?`)) return;
+      try { await fetchJSON(`/posts/${id}`, { method: 'DELETE' }); await loadPosts(); }
+      catch (err) { alert(`삭제 실패: ${err.message}`); }
+    };
+  });
+
+  document.querySelectorAll('.btn-edit').forEach(btn => {
+    btn.onclick = async (e) => {
+      const card = e.target.closest('.card');
+      const id = card.dataset.id;
+      try {
+        const post = await fetchJSON(`/posts/${id}`);
+        const title = prompt('제목 수정', post.title);
+        if (title === null) return;
+        const content = prompt('내용 수정', post.content);
+        if (content === null) return;
+        const author = prompt('작성자 수정(선택)', post.author || '');
+        await fetchJSON(`/posts/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, content, author })
+        });
+        await loadPosts();
+      } catch (err) {
+        alert(`수정 실패: ${err.message}`);
+      }
+    };
+  });
+}
+
+$form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData($form);
+  const payload = Object.fromEntries(fd.entries());
+  try {
+    await fetchJSON('/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    $form.reset();
+    await loadPosts();
+  } catch (err) {
+    alert(`등록 실패: ${err.message}`);
+  }
+});
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+loadPosts();
+```
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 전체구조
+
+```
+src/20/
+├─ app.js
+├─ package.json
+├─ blog.db           # 실행 시 자동 생성
+└─ public/
+   ├─ index.html
+   └─ script.js
+```
+
+### (b) 각 소스별 주석설명
+
+**package.json**
+
+```json
+{
+  "name": "day20-blog-crud",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": { "start": "node app.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.6"
+  }
+}
+```
+
+
+-   **app.js**
+    -   `express.static('public')`로 정적 파일 서빙
+    -   SQLite 초기화 및 CRUD REST API 제공
+    -   라우트:
+        *   `GET /posts` 목록
+        *   `GET /posts/:id` 상세
+        *   `POST /posts` 생성
+        *   `PUT /posts/:id` 수정
+        *   `DELETE /posts/:id` 삭제
+-   **public/index.html**
+    *   작성 폼과 목록 영역을 가진 단일 HTML
+-   **public/script.js**
+    -   Fetch API로 서버 REST API 호출
+    -   작성/수정/삭제 및 목록 갱신 로직
+
+### (c) 빌드방법
+
+```bash
+# 1) 프로젝트 생성
+
+# 2) 의존성 설치
+npm install express sqlite3
+
+# 3) 디렉토리/파일 생성
+mkdir public
+# app.js / public/index.html / public/script.js 내용을 위 코드로 저장
+
+# 4) 실행
+node app.js
+
+# 5) 브라우저에서 접속
+# http://localhost:3000  (폼으로 글 작성 → 목록에서 수정/삭제)
+```
+
+
+## 4) 문제(3항)
+
+1.  **빈칸 채우기**  
+    정적 파일을 제공하기 위해 Express에서 사용하는 내장 미들웨어는 `express.______` 이다.
+2.  **O/X**
+    *   ( ) 같은 서버에서 `index.html`과 `/posts` API를 함께 제공하면 일반적으로 CORS 설정이 필요 없다.
+    *   ( ) `public/script.js`는 Fetch API로 서버의 REST 엔드포인트를 호출할 수 있다.
+3.  **단답**  
+    게시글을 **삭제**하기 위해 호출해야 하는 HTTP 메서드와 엔드포인트를 한 줄로 쓰시오.  
+    (예: `____ ____` 형태)
+
+
+

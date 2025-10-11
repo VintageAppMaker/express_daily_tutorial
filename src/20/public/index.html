@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>블로그 CRUD (Express + SQLite)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 900px;
+            margin: 32px auto;
+            padding: 0 16px;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        form,
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 0;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 6px 0 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .primary {
+            background: #2563eb;
+            color: #fff;
+        }
+
+        .ghost {
+            background: #eee;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .meta {
+            color: #666;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>블로그 CRUD</h1>
+    <p>아래 폼으로 글을 작성하고, 목록에서 **수정/삭제**할 수 있습니다.</p>
+
+    <form id="createForm">
+        <h2>새 글 작성</h2>
+        <input name="title" placeholder="제목" required />
+        <textarea name="content" rows="4" placeholder="내용" required></textarea>
+        <input name="author" placeholder="작성자 (선택)" />
+        <div class="row">
+            <button class="primary" type="submit">등록</button>
+            <button class="ghost" type="reset">초기화</button>
+        </div>
+    </form>
+
+    <h2>게시글 목록</h2>
+    <div id="list"></div>
+
+    <script src="./script.js"></script>
+</body>
+
+</html>
