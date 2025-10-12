@@ -3365,4 +3365,494 @@ node app.js
     (예: `____ ____` 형태)
 
 
+# Day 21 — Blog 예제(Day 20) 고도화 
+
+## 1) 기본설명
+
+단일 `app.js`에 라우트/로직이 몰리면 유지보수가 어려워진다. **Express Router**로 기능별 라우트를 분리하고, **컨트롤러/미들웨어/DB 유틸**을 계층화하면 테스트·확장이 쉬워진다. 
+
+-   `app.use('/api/posts', postsRouter)` 처럼 **프리픽스 기반**으로 하위 라우팅
+-   **컨트롤러(Controller)**: 요청-응답 로직만 담당
+-   **미들웨어(Middleware)**: 검증/에러/공통처리
+-   **DB 유틸**: SQLite 쿼리를 Promise로 래핑해 `async/await` 사용
+-   공통 **에러 핸들러**로 JSON 에러 응답 일원화
+
+## 2) 코드 중심의 활용예제
+
+### `server.js`
+
+```js
+// server.js
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import postsRouter from './src/routes/posts.js';
+import { ensureTables } from './src/db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+
+// 기본 미들웨어
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 정적 파일
+app.use(express.static(path.join(__dirname, 'public')));
+
+// API 라우트
+app.use('/api/posts', postsRouter);
+
+// 404
+app.use((req, res, next) => res.status(404).json({ error: 'Not Found' }));
+
+// 에러 핸들러
+app.use((err, req, res, next) => {
+    console.error(err);
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message || 'Server Error' });
+});
+
+const PORT = process.env.PORT || 3000;
+ensureTables().then(() => {
+    app.listen(PORT, () => console.log(`http://localhost:${PORT}`));
+});
+
+```
+
+### `src/db.js` — SQLite + Promise 유틸
+
+```js
+// src/db.js
+import sqlite3 from 'sqlite3';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const sqlite = sqlite3.verbose();
+const DB_PATH = path.join(__dirname, '..', '..', 'blog.db');
+const db = new sqlite.Database(DB_PATH);
+
+export const run = (sql, params = []) =>
+    new Promise((resolve, reject) => {
+        db.run(sql, params, function (err) {
+            if (err) return reject(err);
+            resolve(this); // this.lastID, this.changes
+        });
+    });
+
+export const get = (sql, params = []) =>
+    new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+    });
+
+export const all = (sql, params = []) =>
+    new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+    });
+
+export async function ensureTables() {
+    await run(`CREATE TABLE IF NOT EXISTS posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    author TEXT DEFAULT 'Anonymous',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+}
+
+export { db };
+
+```
+
+### `src/middlewares/asyncHandler.js`
+
+```js
+// src/middlewares/asyncHandler.js
+const asyncHandler = (fn) => (req, res, next) =>
+    Promise.resolve(fn(req, res, next)).catch(next);
+
+export default asyncHandler;
+
+```
+
+### `src/middlewares/validate.js`
+
+```js
+// src/middlewares/validate.js
+export function requireFields(fields = []) {
+    return (req, res, next) => {
+        const missing = fields.filter((f) => !req.body?.[f]);
+        if (missing.length) {
+            const err = new Error(`필수 필드 누락: ${missing.join(', ')}`);
+            err.status = 400;
+            return next(err);
+        }
+        next();
+    };
+}
+
+```
+
+### `src/controllers/posts.controller.js`
+
+```js
+// src/controllers/posts.controller.js
+import { run, get, all } from '../db.js';
+
+export const list = async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || '10', 10)));
+    const offset = (page - 1) * limit;
+
+    const items = await all(
+        'SELECT * FROM posts ORDER BY id DESC LIMIT ? OFFSET ?',
+        [limit, offset]
+    );
+    const totalRow = await get('SELECT COUNT(*) AS cnt FROM posts');
+    res.json({ page, limit, total: totalRow.cnt, items });
+};
+
+export const detail = async (req, res) => {
+    const row = await get('SELECT * FROM posts WHERE id=?', [req.params.id]);
+    if (!row) {
+        const err = new Error('Not Found');
+        err.status = 404;
+        throw err;
+    }
+    res.json(row);
+};
+
+export const create = async (req, res) => {
+    const { title, content, author } = req.body;
+    const r = await run(
+        'INSERT INTO posts (title, content, author) VALUES (?,?,?)',
+        [title, content, author || 'Anonymous']
+    );
+    const created = await get('SELECT * FROM posts WHERE id=?', [r.lastID]);
+    res.status(201).json(created);
+};
+
+export const update = async (req, res) => {
+    const { title, content, author } = req.body;
+    const r = await run(
+        'UPDATE posts SET title=?, content=?, author=? WHERE id=?',
+        [title, content, author || 'Anonymous', req.params.id]
+    );
+    if (r.changes === 0) {
+        const err = new Error('Not Found');
+        err.status = 404;
+        throw err;
+    }
+    const updated = await get('SELECT * FROM posts WHERE id=?', [req.params.id]);
+    res.json(updated);
+};
+
+export const remove = async (req, res) => {
+    const r = await run('DELETE FROM posts WHERE id=?', [req.params.id]);
+    if (r.changes === 0) {
+        const err = new Error('Not Found');
+        err.status = 404;
+        throw err;
+    }
+    res.status(204).send();
+};
+
+```
+
+### `src/routes/posts.js`
+
+```js
+// src/routes/posts.js
+import { Router } from 'express';
+import * as C from '../controllers/posts.controllers.js';
+import asyncHandler from '../middlewares/asyncHandler.js';
+import { requireFields } from '../middlewares/validate.js';
+
+const router = Router();
+
+// /api/posts
+router.get('/', asyncHandler(C.list));
+router.get('/:id', asyncHandler(C.detail));
+router.post('/', requireFields(['title', 'content']), asyncHandler(C.create));
+router.put('/:id', requireFields(['title', 'content']), asyncHandler(C.update));
+router.delete('/:id', asyncHandler(C.remove));
+
+export default router;
+
+```
+
+### `public/index.html`
+
+```html
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>블로그 CRUD — Router 모듈화</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 32px auto; padding: 0 16px; }
+    h1 { margin: 0 0 8px; } form, .card { border:1px solid #ddd; border-radius:12px; padding:16px; margin:12px 0;}
+    input, textarea { width:100%; padding:8px; margin:6px 0 12px; border:1px solid #ccc; border-radius:8px;}
+    button { padding:8px 12px; border:0; border-radius:8px; cursor:pointer;}
+    .primary { background:#2563eb; color:#fff;} .ghost{ background:#eee;}
+    .row{ display:flex; gap:8px; flex-wrap:wrap;} .meta{ color:#666; font-size:12px; margin-top:4px;}
+    .pager{ display:flex; gap:8px; align-items:center;}
+  </style>
+</head>
+<body>
+  <h1>블로그 CRUD — Router 모듈화</h1>
+
+  <form id="createForm">
+    <h2>새 글 작성</h2>
+    <input name="title" placeholder="제목" required />
+    <textarea name="content" rows="4" placeholder="내용" required></textarea>
+    <input name="author" placeholder="작성자 (선택)" />
+    <div class="row">
+      <button class="primary" type="submit">등록</button>
+      <button class="ghost" type="reset">초기화</button>
+    </div>
+  </form>
+
+  <div class="pager">
+    <button id="prev" class="ghost">이전</button>
+    <span id="pageInfo"></span>
+    <button id="next" class="ghost">다음</button>
+  </div>
+
+  <h2>게시글 목록</h2>
+  <div id="list"></div>
+
+  <script src="./script.js"></script>
+</body>
+</html>
+```
+
+#### `public/script.js`
+
+```js
+const $list = document.getElementById('list');
+const $form = document.getElementById('createForm');
+const $prev = document.getElementById('prev');
+const $next = document.getElementById('next');
+const $pageInfo = document.getElementById('pageInfo');
+
+let page = 1, limit = 5, total = 0;
+
+async function fetchJSON(url, options) {
+  const res = await fetch(url, options);
+  const txt = await res.text();
+  if (!res.ok) throw new Error(tryMsg(txt) || res.statusText);
+  return txt ? JSON.parse(txt) : null;
+}
+const tryMsg = (t) => { try { return JSON.parse(t).error; } catch { return t; } };
+
+async function loadPosts() {
+  $list.innerHTML = '로딩 중...';
+  try {
+    const data = await fetchJSON(`/api/posts?page=${page}&limit=${limit}`);
+    total = data.total;
+    $pageInfo.textContent = `페이지 ${data.page} / 총 ${Math.ceil(total/limit)} (전체 ${total})`;
+    if (!data.items.length) { $list.innerHTML = '<p>등록된 글이 없습니다.</p>'; return; }
+    $list.innerHTML = data.items.map(renderCard).join('');
+    bindCardEvents();
+    updatePager();
+  } catch (e) {
+    $list.innerHTML = `<p style="color:red">불러오기 실패: ${e.message}</p>`;
+  }
+}
+
+function renderCard(p) {
+  return `
+  <div class="card" data-id="${p.id}">
+    <strong>#${p.id}. ${escapeHtml(p.title)}</strong>
+    <div class="meta">by ${escapeHtml(p.author || 'Anonymous')} · ${p.created_at || ''}</div>
+    <p>${escapeHtml(p.content)}</p>
+    <div class="row">
+      <button class="ghost btn-edit">수정</button>
+      <button class="ghost btn-delete">삭제</button>
+    </div>
+  </div>`;
+}
+
+function bindCardEvents() {
+  document.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.onclick = async (e) => {
+      const id = e.target.closest('.card').dataset.id;
+      if (!confirm(`#${id} 글을 삭제할까요?`)) return;
+      try { await fetchJSON(`/api/posts/${id}`, { method: 'DELETE' }); await loadPosts(); }
+      catch (err) { alert(`삭제 실패: ${err.message}`); }
+    };
+  });
+
+  document.querySelectorAll('.btn-edit').forEach(btn => {
+    btn.onclick = async (e) => {
+      const card = e.target.closest('.card');
+      const id = card.dataset.id;
+      try {
+        const post = await fetchJSON(`/api/posts/${id}`);
+        const title = prompt('제목 수정', post.title); if (title === null) return;
+        const content = prompt('내용 수정', post.content); if (content === null) return;
+        const author = prompt('작성자 수정(선택)', post.author || '');
+        await fetchJSON(`/api/posts/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, content, author })
+        });
+        await loadPosts();
+      } catch (err) {
+        alert(`수정 실패: ${err.message}`);
+      }
+    };
+  });
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function updatePager() {
+  const maxPage = Math.max(1, Math.ceil(total / limit));
+  $prev.disabled = page <= 1;
+  $next.disabled = page >= maxPage;
+}
+
+$prev.onclick = () => { if (page > 1) { page--; loadPosts(); } };
+$next.onclick = () => { const max = Math.ceil(total/limit); if (page < max) { page++; loadPosts(); } };
+
+$form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData($form);
+  const payload = Object.fromEntries(fd.entries());
+  try {
+    await fetchJSON('/api/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    $form.reset();
+    page = 1; // 첫 페이지로
+    await loadPosts();
+  } catch (err) {
+    alert(`등록 실패: ${err.message}`);
+  }
+});
+
+loadPosts();
+```
+
+* * *
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 전체구조
+
+```
+day22-router-refactor/
+├─ server.js
+├─ package.json
+├─ blog.db                 # 실행 시 자동 생성/사용
+├─ public/
+│  ├─ index.html
+│  └─ script.js
+└─ src/
+   ├─ db.js
+   ├─ routes/
+   │  └─ posts.js
+   ├─ controllers/
+   │  └─ posts.controller.js
+   └─ middlewares/
+      ├─ asyncHandler.js
+      └─ validate.js
+```
+
+### (b) 각 소스별 주석설명
+
+-   **server.js**: 앱 초기화, 정적 파일, `/api/posts` 라우트 연결, 404·에러 핸들러 등록, DB 테이블 보장 후 리슨
+-   **src/db.js**: SQLite 커넥션 및 `run/get/all` Promise 유틸, `ensureTables()`로 스키마 생성
+-   **src/routes/posts.js**: Posts 전용 **Router**. `GET/POST/PUT/DELETE` 바인딩
+-   **src/controllers/posts.controller.js**: 비즈니스 로직(목록/상세/생성/수정/삭제), 페이지네이션 지원
+-   **src/middlewares/asyncHandler.js**: 비동기 컨트롤러 에러를 `next(err)`로 위임
+-   **src/middlewares/validate.js**: 바디 필수값 검증
+-   **public/**: 정적 프론트엔드. API 프리픽스(`/api/posts`)로 호출하도록 변경, 간단한 페이지네이션 UI 포함
+
+**package.json**
+
+```json
+{
+  "name": "express-router-blog",
+  "version": "1.0.0",
+  "description": "Day 21 — Express Router 모듈화 & 계층형 라우팅 (CRUD 블로그 리팩터링 예제)",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "express",
+    "router",
+    "crud",
+    "sqlite",
+    "mvc",
+    "nodejs"
+  ],
+  "author": "Vintage AppMaker",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.6",
+    "body-parser": "^1.20.3",
+    "morgan": "^1.10.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.3"
+  }
+}
+
+```
+
+### (c) 빌드방법
+
+```bash
+# 1) 프로젝트 생성
+
+# 2) 의존성
+npm i express sqlite3
+
+# 3) 디렉토리/파일 생성 후 위 코드 복붙
+mkdir -p src/routes src/controllers src/middlewares public
+
+# 4) 실행
+npm start
+# 브라우저: http://localhost:3000
+# API 예시:
+# curl -X POST http://localhost:3000/api/posts -H 'Content-Type: application/json' \
+#      -d '{"title":"hello","content":"world"}'
+# curl "http://localhost:3000/api/posts?page=1&limit=5"
+```
+
+* * *
+
+### 4) 문제(3항)
+
+1.  **빈칸 채우기**  
+    하위 라우터를 `/api/posts` 경로에 매핑하기 위한 코드는  
+    `app.use('/api/posts', ________)` 이다. (빈칸에 들어갈 식별자는?)
+2.  **O/X**
+    *   ( ) `app.use('/api', router)`로 등록하면 `router` 내부의 `GET /health`는 실제로 `GET /api/health`로 노출된다.
+    *   ( ) 컨트롤러에서 발생한 비동기 에러를 잡기 위해 `asyncHandler` 같은 래퍼를 사용할 수 있다.
+3.  **단답**  
+    게시글 목록을 **2페이지, 페이지당 5개**로 조회하는 쿼리스트링을 한 줄로 쓰시오.  
+    (예: `/api/posts?________` 형태)
+
+> 다음 회차에서는 **에러 처리 고도화(에러 클래스/로깅/요청 ID)** 또는 **환경별 설정(.env)** 중 하나를 이어갑니다.
+
+
 

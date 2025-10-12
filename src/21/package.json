@@ -1,0 +1,31 @@
+{
+    "name": "express-router-blog",
+    "version": "1.0.0",
+    "description": "Day 22 — Express Router 모듈화 & 계층형 라우팅 (CRUD 블로그 리팩터링 예제)",
+    "main": "server.js",
+    "type": "module",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "nodemon server.js"
+    },
+    "keywords": [
+        "express",
+        "router",
+        "crud",
+        "sqlite",
+        "mvc",
+        "nodejs"
+    ],
+    "author": "Vintage AppMaker",
+    "license": "MIT",
+    "dependencies": {
+        "express": "^4.19.2",
+        "sqlite3": "^5.1.6",
+        "body-parser": "^1.20.3",
+        "morgan": "^1.10.0",
+        "cors": "^2.8.5"
+    },
+    "devDependencies": {
+        "nodemon": "^3.1.3"
+    }
+}
