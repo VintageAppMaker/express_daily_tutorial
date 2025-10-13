@@ -3632,7 +3632,7 @@ export default router;
 </html>
 ```
 
-#### `public/script.js`
+### `public/script.js`
 
 ```js
 const $list = document.getElementById('list');
@@ -3746,7 +3746,6 @@ $form.addEventListener('submit', async (e) => {
 loadPosts();
 ```
 
-* * *
 
 ## 3) 데스크탑에서 빌드할 수 있는 예제
 
@@ -3838,9 +3837,7 @@ npm start
 # curl "http://localhost:3000/api/posts?page=1&limit=5"
 ```
 
-* * *
-
-### 4) 문제(3항)
+## 4) 문제(3항)
 
 1.  **빈칸 채우기**  
     하위 라우터를 `/api/posts` 경로에 매핑하기 위한 코드는  
@@ -3852,7 +3849,237 @@ npm start
     게시글 목록을 **2페이지, 페이지당 5개**로 조회하는 쿼리스트링을 한 줄로 쓰시오.  
     (예: `/api/posts?________` 형태)
 
-> 다음 회차에서는 **에러 처리 고도화(에러 클래스/로깅/요청 ID)** 또는 **환경별 설정(.env)** 중 하나를 이어갑니다.
+
+# Day 22 — 로그인/회원가입 서비스 (JWT 인증 적용)
+
+## 1) 기본설명
+
+웹 애플리케이션에서 사용자의 **인증(Authentication)** 은 핵심 기능이다.  
+Express에서는 크게 두 가지 접근을 사용한다.
+
+1.  **세션(Session) 기반 인증**
+    *   서버 메모리나 DB에 세션 저장소를 두고, 클라이언트에는 세션 ID(쿠키)를 발급
+    *   브라우저 쿠키를 이용해 인증 유지
+    *   주로 SSR(서버 렌더링) 또는 소규모 앱에 적합
+2.  **JWT(JSON Web Token) 기반 인증**
+    *   로그인 시 암호화된 토큰을 발급하고 클라이언트가 요청 시 `Authorization: Bearer <token>` 으로 인증
+    *   서버는 토큰 검증만 수행 (상태 저장 필요 없음)
+    *   SPA, 모바일, REST API 서버에 적합
+
+예제에서는 **Express + SQLite + JWT** 기반의 간단한 회원가입 및 로그인 서버를 구현.
+
+
+## 2) 코드 중심의 활용예제
+
+### `server.js`
+
+```js
+// server.js
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const authRouter = require('./src/routes/auth');
+const { ensureTables } = require('./src/db');
+
+const app = express();
+app.use(cors());
+app.use(morgan('dev'));
+app.use(express.json());
+
+// 라우트
+app.use('/api/auth', authRouter);
+
+// 에러 핸들러
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(err.status || 500).json({ error: err.message || 'Server Error' });
+});
+
+const PORT = process.env.PORT || 3000;
+ensureTables().then(() => {
+  app.listen(PORT, () => console.log(`✅ http://localhost:${PORT}`));
+});
+```
+
+### `src/db.js`
+
+```js
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+
+const DB_PATH = path.join(__dirname, '..', 'users.db');
+const db = new sqlite3.Database(DB_PATH);
+
+const run = (sql, params = []) =>
+  new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) return reject(err);
+      resolve(this);
+    });
+  });
+
+const get = (sql, params = []) =>
+  new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+  });
+
+async function ensureTables() {
+  await run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+}
+
+module.exports = { db, run, get, ensureTables };
+```
+
+### `src/routes/auth.js`
+
+```js
+const router = require('express').Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { get, run } = require('../db');
+
+const SECRET = 'jwt-secret-key'; // 실제 프로젝트에서는 .env로 관리
+
+// 회원가입
+router.post('/register', async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) throw new Error('필수 입력 누락');
+
+    const exists = await get('SELECT * FROM users WHERE username = ?', [username]);
+    if (exists) throw new Error('이미 존재하는 사용자입니다.');
+
+    const hash = await bcrypt.hash(password, 10);
+    await run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hash]);
+    res.status(201).json({ message: '회원가입 완료' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 로그인
+router.post('/login', async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    const user = await get('SELECT * FROM users WHERE username = ?', [username]);
+    if (!user) throw new Error('존재하지 않는 사용자입니다.');
+
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) throw new Error('비밀번호가 일치하지 않습니다.');
+
+    const token = jwt.sign({ id: user.id, username: user.username }, SECRET, { expiresIn: '1h' });
+    res.json({ message: '로그인 성공', token });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// JWT 검증 미들웨어
+function authRequired(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header) return res.status(401).json({ error: '토큰 없음' });
+  const token = header.split(' ')[1];
+  try {
+    req.user = jwt.verify(token, SECRET);
+    next();
+  } catch {
+    res.status(401).json({ error: '토큰 검증 실패' });
+  }
+}
+
+// 보호된 라우트
+router.get('/me', authRequired, (req, res) => {
+  res.json({ message: '인증 성공', user: req.user });
+});
+
+module.exports = router;
+```
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 구조
+
+```
+day23-auth-service/
+├── server.js
+├── package.json
+├── src/
+│   ├── db.js
+│   └── routes/
+│       └── auth.js
+└── users.db   # 실행 시 자동 생성
+```
+```json
+{
+    "name": "day11-login-express",
+    "version": "1.0.0",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "bcryptjs": "^3.0.2",
+        "cors": "^2.8.5",
+        "express": "^5.1.0",
+        "jsonwebtoken": "^9.0.2",
+        "morgan": "^1.10.1",
+        "sqlite3": "^5.1.7"
+    }
+}
+```
+### (b) 각 소스별 주석설명
+
+| 파일 | 설명 |
+| --- | --- |
+| `server.js` | Express 앱 초기화, `/api/auth` 라우트 연결 |
+| `db.js` | SQLite 연결 및 쿼리 유틸, `users` 테이블 자동 생성 |
+| `routes/auth.js` | 회원가입, 로그인, JWT 발급 및 검증 로직 포함 |
+| `users.db` | SQLite DB 파일 (자동 생성) |
+
+### (c) 빌드방법
+
+```bash
+# 1) 프로젝트 생성
+
+# 2) 의존성 설치
+npm install express sqlite3 bcryptjs jsonwebtoken cors morgan
+
+# 3) 개발용 실행
+node server.js
+
+# 4) 테스트
+# 회원가입
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"1234"}'
+
+# 로그인
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"1234"}'
+
+# 토큰 인증 확인
+curl -H "Authorization: Bearer <발급받은_토큰>" http://localhost:3000/api/auth/me
+```
+
+
+## 4) 문제(3항)
+
+1.  **빈칸 채우기**  
+    JWT 토큰을 생성할 때 사용하는 함수는 `jwt._______(payload, secret, options)` 이다.
+2.  **O/X**
+    *   ( ) bcrypt는 비밀번호를 단방향 해시로 암호화하기 위해 사용된다.
+    *   ( ) 로그인 성공 시 서버는 토큰을 발급하고 클라이언트는 이를 Authorization 헤더로 전달한다.
+3.  **단답**  
+    JWT 토큰이 만료되었을 때 서버는 어떤 **HTTP 상태코드**를 반환해야 하는가?  
+    (예: `____ Unauthorized`)
+
 
 
 
