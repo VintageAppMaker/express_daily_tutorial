@@ -1,5 +1,5 @@
 {
-    "name": "day15-async-await",
+    "name": "day14-async-await",
     "version": "1.0.0",
     "main": "app.js",
     "scripts": {

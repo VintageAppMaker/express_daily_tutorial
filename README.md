@@ -4081,5 +4081,430 @@ curl -H "Authorization: Bearer <발급받은_토큰>" http://localhost:3000/api/
     (예: `____ Unauthorized`)
 
 
+# Day 23 — 블로그 CRUD(Express + SQLite) **React 프론트엔드 연동**
 
+## 1) 기본설명
+
+Express + SQLite CRUD API를 **React(Vite)** 프론트엔드로 연동.
+
+*   **백엔드**: Express + SQLite, REST API(`/api/posts`) 제공
+*   **프론트엔드**: React(Vite) + Fetch API로 목록/작성/수정/삭제 구현
+*   **연동 방식**
+    *   개발 편의를 위해 Vite dev 서버에서 **프록시(proxy)** 를 설정해 `/api/*` 요청을 백엔드(`http://localhost:3000`)로 전달
+
+
+## 2) 코드 중심의 활용예제
+
+### 2-1) 서버 (Express + SQLite)
+
+`server/server.js`
+
+```js
+const express = require('express');
+const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
+
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// SQLite 연결 및 테이블 생성
+const DB_PATH = path.join(__dirname, 'blog.db');
+const db = new sqlite3.Database(DB_PATH);
+
+db.run(`CREATE TABLE IF NOT EXISTS posts(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  author TEXT DEFAULT 'Anonymous',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+// REST API
+app.get('/api/posts', (req, res) => {
+  db.all('SELECT * FROM posts ORDER BY id DESC', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.get('/api/posts/:id', (req, res) => {
+  db.get('SELECT * FROM posts WHERE id=?', [req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Not Found' });
+    res.json(row);
+  });
+});
+
+app.post('/api/posts', (req, res) => {
+  const { title, content, author } = req.body;
+  if (!title || !content) return res.status(400).json({ error: 'title, content 필수' });
+
+  db.run('INSERT INTO posts (title, content, author) VALUES (?,?,?)',
+    [title, content, author || 'Anonymous'],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.status(201).json({ id: this.lastID, title, content, author: author || 'Anonymous' });
+    });
+});
+
+app.put('/api/posts/:id', (req, res) => {
+  const { title, content, author } = req.body;
+  if (!title || !content) return res.status(400).json({ error: 'title, content 필수' });
+
+  db.run('UPDATE posts SET title=?, content=?, author=? WHERE id=?',
+    [title, content, author || 'Anonymous', req.params.id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'Not Found' });
+      res.json({ id: Number(req.params.id), title, content, author: author || 'Anonymous' });
+    });
+});
+
+app.delete('/api/posts/:id', (req, res) => {
+  db.run('DELETE FROM posts WHERE id=?', [req.params.id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Not Found' });
+    res.status(204).send();
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(` API: http://localhost:${PORT}/api/posts`));
+```
+
+
+### 2-2) 클라이언트 (React + Vite)
+
+`client/package.json` (Vite 템플릿 생성 시 자동)
+
+```json
+{
+  "name": "client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
+  "dependencies": { "react": "^18.3.1", "react-dom": "^18.3.1" },
+  "devDependencies": { "@vitejs/plugin-react": "^4.3.1", "vite": "^5.4.0" }
+}
+```
+
+`client/vite.config.js` (프록시 설정: `/api` → `http://localhost:3000`)
+
+```js
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: {
+      '/api': { target: 'http://localhost:3000', changeOrigin: true }
+    }
+  }
+})
+```
+
+`client/src/api.js`
+
+```js
+export async function request(url, options) {
+  const res = await fetch(url, options);
+  const text = await res.text();
+  const parse = () => (text ? JSON.parse(text) : null);
+  if (!res.ok) {
+    let msg = text;
+    try { msg = JSON.parse(text).error || msg; } catch {}
+    throw new Error(msg || res.statusText);
+  }
+  return parse();
+}
+
+export const PostsAPI = {
+  list: () => request('/api/posts'),
+  detail: (id) => request(`/api/posts/${id}`),
+  create: (body) => request('/api/posts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }),
+  update: (id, body) => request(`/api/posts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }),
+  remove: (id) => request(`/api/posts/${id}`, { method: 'DELETE' })
+};
+```
+
+`client/src/App.jsx`
+
+```jsx
+// client/src/App.jsx
+import { useEffect, useState } from 'react'
+import { PostsAPI } from './api'
+import './app.css'
+import {
+  Container, Card, CardContent, CardActions,
+  Typography, Stack, TextField, Button, Divider, Box
+} from '@mui/material'
+
+export default function App() {
+  const [posts, setPosts] = useState([])
+  const [form, setForm] = useState({ title: '', content: '', author: '' })
+  const [loading, setLoading] = useState(true)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const data = await PostsAPI.list()
+      setPosts(data)
+    } catch (e) {
+      alert('불러오기 실패: ' + e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => { load() }, [])
+
+  const onSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      await PostsAPI.create(form)
+      setForm({ title: '', content: '', author: '' })
+      await load()
+    } catch (e) {
+      alert('등록 실패: ' + e.message)
+    }
+  }
+
+  const onDelete = async (id) => {
+    if (!confirm(`#${id} 글을 삭제할까요?`)) return
+    try { await PostsAPI.remove(id); await load() }
+    catch (e) { alert('삭제 실패: ' + e.message) }
+  }
+
+  const onEdit = async (id) => {
+    try {
+      const post = await PostsAPI.detail(id)
+      const title = prompt('제목 수정', post.title); if (title === null) return
+      const content = prompt('내용 수정', post.content); if (content === null) return
+      const author = prompt('작성자(선택)', post.author || '')
+      await PostsAPI.update(id, { title, content, author })
+      await load()
+    } catch (e) {
+      alert('수정 실패: ' + e.message)
+    }
+  }
+
+  return (
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Typography variant="h4" sx={{ mb: 2, fontWeight: 700 }}>
+        블로그 CRUD — React + Material UI
+      </Typography>
+
+      {/* 입력 폼: 세로(Stack) 배치 */}
+      <Card component="form" onSubmit={onSubmit} sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 1.5 }}>새 글 작성</Typography>
+          <Stack spacing={2}>
+            <TextField
+              label="제목"
+              value={form.title}
+              onChange={e => setForm({ ...form, title: e.target.value })}
+              required
+              fullWidth
+            />
+            <TextField
+              label="내용"
+              value={form.content}
+              onChange={e => setForm({ ...form, content: e.target.value })}
+              required
+              fullWidth
+              multiline
+              minRows={4}
+            />
+            <TextField
+              label="작성자 (선택)"
+              value={form.author}
+              onChange={e => setForm({ ...form, author: e.target.value })}
+              fullWidth
+            />
+          </Stack>
+        </CardContent>
+        <CardActions sx={{ px: 2, pb: 2 }}>
+          <Button type="submit" variant="contained">등록</Button>
+          <Button
+            variant="outlined"
+            onClick={() => setForm({ title: '', content: '', author: '' })}
+          >
+            초기화
+          </Button>
+        </CardActions>
+      </Card>
+
+      <Divider sx={{ my: 3 }} />
+
+      <Typography variant="h6" sx={{ mb: 1.5 }}>게시글 목록</Typography>
+      {loading ? (
+        <Typography>로딩 중...</Typography>
+      ) : posts.length ? (
+        <Stack spacing={2}>
+          {posts.map(p => (
+            <Card key={p.id}>
+              <CardContent>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  #{p.id}. {p.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  by {p.author || 'Anonymous'} · {p.created_at}
+                </Typography>
+                <Box sx={{ whiteSpace: 'pre-wrap', mt: 1.25 }}>
+                  {p.content}
+                </Box>
+              </CardContent>
+              <CardActions sx={{ px: 2, pb: 2 }}>
+                <Button variant="outlined" onClick={() => onEdit(p.id)}>수정</Button>
+                <Button variant="outlined" color="error" onClick={() => onDelete(p.id)}>삭제</Button>
+              </CardActions>
+            </Card>
+          ))}
+        </Stack>
+      ) : (
+        <Typography>등록된 글이 없습니다.</Typography>
+      )}
+    </Container>
+  )
+}
+
+```
+
+`client/src/main.jsx` 
+
+```jsx
+// client/src/main.jsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'
+
+const theme = createTheme({
+  palette: { mode: 'light', primary: { main: '#2563eb' } },
+  typography: { fontFamily: 'system-ui, apple-system, Segoe UI, Roboto, sans-serif' }
+})
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <App />
+    </ThemeProvider>
+  </React.StrictMode>
+)
+
+```
+
+`client/index.html` (Vite 기본)
+
+```html
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>React + Express Blog</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+```
+
+`client/src/app.css` (간단 스타일)
+
+```css
+:root { font-family: system-ui, sans-serif; color-scheme: light; }
+.container { max-width: 900px; margin: 32px auto; padding: 0 16px; }
+.card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 12px 0; }
+input, textarea { width: 100%; padding: 8px; margin: 6px 0 12px; border: 1px solid #ccc; border-radius: 8px; }
+button { padding: 8px 12px; border: 0; border-radius: 8px; cursor: pointer; }
+.primary { background: #2563eb; color: #fff; }
+.ghost { background: #eee; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.meta { color: #666; font-size: 12px; margin-top: 4px; }
+.content { white-space: pre-wrap; }
+```
+
+
+## 3) 데스크탑에서 빌드할 수 있는 예제
+
+### (a) 프로젝트 전체구조
+
+```
+src/23/
+├─ server/
+│  ├─ server.js
+│  └─ blog.db            # 실행 시 자동 생성/사용
+└─ client/
+   ├─ index.html
+   ├─ vite.config.js
+   ├─ package.json
+   └─ src/
+      ├─ main.jsx
+      ├─ App.jsx
+      ├─ api.js
+      └─ app.css
+```
+
+#### (b) 각 소스별 주석설명
+
+*   **server/server.js**: Express + SQLite API. CRUD 라우트는 `/api/posts`로 제공.
+*   **server/blog.db**: SQLite DB 파일(자동 생성).
+*   **client/vite.config.js**: `/api` 경로 프록시를 `http://localhost:3000`으로 연결.
+*   **client/src/api.js**: Fetch 헬퍼 + Posts API 래퍼.
+*   **client/src/App.jsx**: 작성/목록/수정/삭제 UI 및 로직.
+*   **client/src/app.css**: 기본 스타일.
+
+#### (c) 빌드방법
+
+```bash
+# 0) 작업 루트 생성
+
+# 1) 백엔드
+npm init -y
+npm i express sqlite3
+# server/server.js 파일을 위 코드로 저장
+node server.js
+# -> http://localhost:3000/api/posts 동작 확인
+cd ..
+
+# 2) 프론트엔드 (Vite + React)
+cd client
+# package.json
+npm i
+
+# package.json에 추가하지 않은 material 테마
+npm i @mui/material @emotion/react @emotion/styled
+# vite.config.js를 위 내용으로 교체하고
+# src/* 파일들을 위 코드로 교체
+npm run dev
+# -> http://localhost:5173 접속 (프록시로 API 사용)
+```
+
+> 참고: 운영 배포 시에는 `client`를 `npm run build`로 빌드한 뒤,  
+> 정적 산출물을 Nginx/CloudFront로 제공하거나 Express에 서빙하도록 구성할 수 있습니다.
+
+
+## 4) 문제(3항)
+
+1.  **빈칸 채우기**  
+    Vite 개발 서버에서 API 서버로 요청을 전달하기 위해 사용하는 설정은 `vite.config.js`의 `server.______` 이다.
+2.  **O/X**
+    *   ( ) Vite의 프록시를 사용하면 개발 중 별도의 CORS 설정 없이도 `/api/*` 요청을 백엔드로 전달할 수 있다.
+    *   ( ) 프론트엔드에서 직접 `http://localhost:3000/api/posts`로 호출하면 Vite 프록시가 동작하지 않는다.
+3.  **단답**  
+    게시글을 **수정**하기 위해 React 클라이언트가 호출해야 하는 HTTP 메서드와 엔드포인트는?  
+    예) `____ /api/posts/:id`
 
